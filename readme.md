@@ -9,7 +9,7 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
       ⬇️ Download the Android APK ⬇️
     </a>
   </h2>
-  <strong>( https://www.kikko.be/apk/kikko_saga_forge.apk )</strong>
+  <strong>( https://www.kikko.be/apk/kikko.apk )</strong>
 </p>
 
 # Kikko's Saga Forge: A Verifiable & Evolvable Knowledge RPG
