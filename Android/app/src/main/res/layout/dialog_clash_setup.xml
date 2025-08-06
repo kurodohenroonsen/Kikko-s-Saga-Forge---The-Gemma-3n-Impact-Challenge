@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Préparation au Clash"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:layout_marginBottom="20dp"/>
+
+    <TextView
+        style="?attr/textAppearanceTitleMedium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sélection de la Reine IA"
+        android:layout_marginBottom="8dp"/>
+
+    <Spinner
+        android:id="@+id/clash_setup_model_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        style="?attr/textAppearanceTitleMedium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Choix du Cerveau"
+        android:layout_marginBottom="8dp"/>
+
+    <RadioGroup
+        android:id="@+id/clash_setup_accelerator_radiogroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/clash_setup_cpu_radio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CPU (Stable)"
+            android:checked="true"/>
+
+        <RadioButton
+            android:id="@+id/clash_setup_gpu_radio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="GPU (Rapide)"/>
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/clash_setup_temperature_label"
+        style="?attr/textAppearanceTitleMedium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tempérament du Juge (0.20)"
+        android:layout_marginBottom="8dp"/>
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/clash_setup_temperature_slider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="0.0"
+        android:valueTo="1.0"
+        android:stepSize="0.01"
+        android:value="0.20"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        style="?attr/textAppearanceTitleMedium"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Options Audio"
+        android:layout_marginBottom="8dp"/>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/clash_setup_tts_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Activer la lecture des verdicts"
+        android:checked="true"
+        android:layout_marginBottom="24dp"/>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <CheckBox
+            android:id="@+id/clash_setup_dont_show_again_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ne plus afficher cette fenêtre au démarrage"/>
+
+        <Button
+            android:id="@+id/clash_setup_confirm_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Accéder à l'Arène"/>
+    </LinearLayout>
+
+</LinearLayout>

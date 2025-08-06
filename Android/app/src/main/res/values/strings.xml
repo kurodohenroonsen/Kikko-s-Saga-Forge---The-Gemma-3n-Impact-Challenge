@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- =============================================================== -->
+    <!-- ORIGINAL STRINGS (TRANSLATABLE) -->
+    <!-- =============================================================== -->
+    <string name="app_name">KiKKo Saga Forge</string>
+    <string name="model_manager">Model Manager</string>
+    <string name="downloaded_size">%1$s downloaded</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="confirm_delete_model_dialog_title">Delete download</string>
+    <string name="confirm_delete_model_dialog_content">Are you sure you want to delete the downloaded model \"%s\"?</string>
+    <string name="notification_title_success">Model download succeeded</string>
+    <string name="notification_content_success">Model \"%s\" has been downloaded</string>
+    <string name="notification_title_fail">Model download failed</string>
+    <string name="notification_content_fail">Failed to download model \"%s\"</string>
+    <string name="chat_textinput_placeholder">Type message…</string>
+    <string name="chat_you">You</string>
+    <string name="chat_llm_agent_name">LLM</string>
+    <string name="chat_generic_agent_name">Model</string>
+    <string name="chat_generic_result_name">Result</string>
+    <string name="model_not_downloaded_msg">Model not downloaded yet</string>
+    <string name="model_is_initializing_msg">Initializing model…</string>
+    <string name="text_input_placeholder_text_classification">Type movie review to classify…</string>
+    <string name="text_image_generation_text_field_placeholder">Type prompt…</string>
+    <string name="text_input_placeholder_llm_chat">Type prompt…</string>
+    <string name="run_again">Run again</string>
+    <string name="benchmark">Run benchmark</string>
+    <string name="warming_up">warming up…</string>
+    <string name="running">running</string>
+    <string name="debug_activity_title">Kikko Debug &amp; Test Lab</string>
+    <string name="model_management_title">Model Management</string>
+    <string name="service_testing_title">Service Testing</string>
+    <string name="status_downloading">Downloading... %1$d%%</string>
+    <string name="status_unzipping">Unzipping...</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_not_downloaded">Not Downloaded</string>
+    <string name="status_error">Error</string>
+    <string name="button_download">Download</string>
+    <string name="button_delete">Delete</string>
+    <string name="sort_by_prompt">Sort by…</string>
+    <string name="vosk_test_title">Vosk Speech-to-Text</string>
+    <string name="button_test_vosk">Start Listening</string>
+    <string name="button_stop_vosk">Stop Listening</string>
+    <string name="vosk_status_idle">Status: Idle</string>
+    <string name="vosk_status_listening">Status: Listening...</string>
+    <string name="vosk_status_result">Result:</string>
+    <string name="vosk_permission_denied">Error: Microphone permission denied.</string>
+    <string name="ml_kit_test_title">ML Kit Tests</string>
+    <string name="ocr_test_title">Text Recognition (OCR)</string>
+    <string name="button_run_ocr_test">Run OCR Test</string>
+    <string name="object_detection_title">Object Detection</string>
+    <string name="button_run_object_test">Run Object Test</string>
+    <string name="language_id_title">Language ID &amp; Translation</string>
+    <string name="language_id_hint">Type text here...</string>
+    <string name="button_run_language_test">Identify &amp; Translate (to FR)</string>
+    <string name="gemma_test_title">Gemma LLM Test</string>
+    <string name="gemma_prompt_hint">Enter a prompt for Gemma...</string>
+    <string name="button_run_gemma_test">Send to Gemma</string>
+    <string name="gemma_status_thinking">Gemma is thinking...</string>
+    <string name="gemma_status_result">Gemma\'s response:</string>
+    <string name="model_not_initialized">Model not initialized</string>
+    <string name="dialog_connection_title">Accept connection from %1$s?</string>
+    <string name="dialog_connection_message">Confirm the code is: %1$s</string>
+    <string name="dialog_accept">Accept</string>
+    <string name="dialog_decline">Decline</string>
+    <string name="card_record_format" translatable="false">🏆 %1$d / 💔 %2$d</string>
+    <string name="card_distance_format_m" translatable="false">%.1fm</string>
+    <string name="card_distance_format_cm" translatable="false">%.0fcm</string>
+
+    <!-- =================================================================================== -->
+    <!-- BOURDON'S I18N AUDIT - NEW CENTRALIZED STRINGS (CURRENTLY NON-TRANSLATABLE) -->
+    <!-- =================================================================================== -->
+
+    <!-- Generic Errors -->
+    <string name="error_unknown" translatable="false">Unknown error</string>
+    <string name="error_title" translatable="false">Error</string>
+    <string name="error_generic_prefix" translatable="false">Error: %1$s</string>
+    <string name="error_no_model_selected" translatable="false">No AI model is selected or available.</string>
+    <string name="dialog_ok" translatable="false">OK</string>
+
+    <!-- StartActivity Layout -->
+    <string name="app_title_multiline" translatable="false">KiKKo\'s\nSaga Forge</string>
+    <string name="navigation_decks" translatable="false">Decks</string>
+    <string name="navigation_pollen_live" translatable="false">Pollen Live</string>
+    <string name="navigation_forge" translatable="false">Forge</string>
+    <string name="navigation_clash" translatable="false">Clash</string>
+
+    <!-- StartActivity & ToolsDialog Logic -->
+    <string name="import_saga_failure" translatable="false">Saga import failed.</string>
+    <string name="importing_new_model" translatable="false">Importing new model...</string>
+    <string name="import_new_model_success" translatable="false">New model added successfully!</string>
+    <string name="import_new_model_failure" translatable="false">Error importing new model.</string>
+    <string name="vosk_model_import_success" translatable="false">Vosk model \'%1$s\' imported!</string>
+    <string name="vosk_model_import_failure" translatable="false">Error: %1$s</string>
+    <string name="vosk_model_import_invalid_zip" translatable="false">Invalid Zip or does not contain a model folder.</string>
+    <string name="secret_interaction_unlocked" translatable="false">Secret interaction unlocked!</string>
+    <string name="hive_memory_cleared" translatable="false">Hive Memory cleared!</string>
+    <string name="dialog_confirmation_required_title" translatable="false">Confirmation Required</string>
+    <string name="dialog_nuke_db_message" translatable="false">Are you absolutely sure you want to erase ALL Hive memory (cards and pollen)? This action is irreversible.</string>
+    <string name="dialog_confirm_nuke" translatable="false">Yes, clear everything</string>
+    <string name="dialog_cancel" translatable="false">Cancel</string>
+    <string name="mic_permission_denied" translatable="false">Microphone permission denied.</string>
+    <string name="mic_permission_granted" translatable="false">Permission granted. Hold to speak.</string>
+    <string name="counter_label_raw" translatable="false">Raw: %1$d</string>
+    <string name="counter_label_forging" translatable="false">In Forge: %1$d</string>
+    <string name="counter_label_honey" translatable="false">Honey: %1$d</string>
+    <string name="counter_label_error" translatable="false">Errors: %1$d</string>
+    <string name="vosk_loading_model" translatable="false">Loading %1$s...</string>
+    <string name="vosk_loading_model_failed" translatable="false">Failed to load model.</string>
+    <string name="vosk_model_deleted_success" translatable="false">Model \'%1$s\' deleted.</string>
+    <string name="vosk_model_deleted_failure" translatable="false">Failed to delete model \'%1$s\'.</string>
+    <string name="share_saga_title" translatable="false">Share Kikko Saga</string>
+    <string name="export_saga_failure" translatable="false">Export failed. No cards to export?</string>
+    <string name="model_deleted_success" translatable="false">\'%1$s\' deleted.</string>
+    <string name="model_deleted_failure" translatable="false">Failed to delete \'%1$s\'.</string>
+
+    <!-- ToolsDialog Layout -->
+    <string name="tools_dialog_title" translatable="false">Forager\'s Toolbox</string>
+    <string name="tools_active_queen_forge" translatable="false">Active AI Queen for the Forge</string>
+    <string name="tools_queen_accelerator" translatable="false">Queen\'s Brain</string>
+    <string name="tools_accelerator_cpu" translatable="false">CPU (Stable)</string>
+    <string name="tools_accelerator_gpu" translatable="false">GPU (Fast)</string>
+    <string name="tools_voice_recognition" translatable="false">Voice Recognition (Vosk)</string>
+    <string name="tools_button_load_vosk" translatable="false">Load a new voice model (.zip)</string>
+    <string name="tools_forge_settings" translatable="false">Forge Settings</string>
+    <string name="tools_forge_require_charging" translatable="false">Forge only while charging</string>
+    <string name="tools_forge_require_idle" translatable="false">Forge only when device is idle</string>
+    <string name="tools_manage_local_queens" translatable="false">Manage Local AI Queens</string>
+    <string name="tools_button_add_queen" translatable="false">Add a new AI Queen (.task)</string>
+    <string name="tools_saga_management" translatable="false">Saga Management (Card Decks)</string>
+    <string name="tools_button_import_saga" translatable="false">Import Saga</string>
+    <string name="tools_button_export_saga" translatable="false">Export Saga</string>
+    <string name="tools_danger_zone" translatable="false">⚠️ Danger Zone</string>
+    <string name="tools_button_nuke_db" translatable="false">Erase Entire Hive Memory</string>
+    <string name="queen_selected_toast" translatable="false">\'%1$s\' is now the Queen of the Forge.</string>
+    <string name="accelerator_set_toast" translatable="false">Queen\'s Brain set to: %1$s</string>
+    <string name="forge_charging_toast" translatable="false">Forge while charging: %1$s</string>
+    <string name="forge_idle_toast" translatable="false">Forge when idle: %1$s</string>
+    <string name="generic_enabled" translatable="false">Enabled</string>
+    <string name="generic_disabled" translatable="false">Disabled</string>
+    <string name="tools_button_download_more_queens" translatable="false">Download More Queens</string>
+    <string name="tools_button_download_decks" translatable="false">Download Decks</string>
+
+    <!-- Clash -->
+    <string name="clash_title" translatable="false">CLASH</string>
+    <string name="clash_judge_awakening" translatable="false">The AI Judge is awakening...</string>
+    <string name="clash_button_random_desc" translatable="false">Generate random teams</string>
+    <string name="clash_button_settings_desc" translatable="false">Clash settings</string>
+    <string name="clash_button_radar_desc" translatable="false">Find P2P opponents</string>
+    <string name="clash_button_start_solo" translatable="false">Start Clash</string>
+    <string name="p2p_panel_close_desc" translatable="false">Close P2P panel</string>
+    <string name="p2p_permissions_required" translatable="false">P2P permissions are required.</string>
+    <string name="p2p_default_player_name" translatable="false">KikkoUser%1$d</string>
+    <string name="p2p_status_inactive" translatable="false">P2P Arena inactive.</string>
+    <string name="p2p_status_connected" translatable="false">Connected! Choose your champions.</string>
+    <string name="p2p_status_connection_failed" translatable="false">Connection failed.</string>
+    <string name="p2p_status_disconnected" translatable="false">Disconnected.</string>
+    <string name="judge_awakening_please_wait" translatable="false">The AI Judge is awakening, please wait.</string>
+    <string name="inference_error_generic" translatable="false">Generic inference error</string>
+    <string name="judge_ready_toast" translatable="false">AI Judge \'%1$s\' is ready for the Clash!</string>
+    <string name="judge_error_toast" translatable="false">AI Judge Error: %1$s</string>
+    <string name="error_not_enough_cards_in_deck" translatable="false">You need at least 2 cards in the \'%1$s\' deck.</string>
+    <string name="verdict_parse_reasoning_fallback" translatable="false">The Judge remained silent.</string>
+    <string name="verdict_parse_tts_fallback_script" translatable="false">The verdict is in!</string>
+    <string name="verdict_parse_error_reasoning" translatable="false">The AI Judge provided a verdict in an unexpected format.</string>
+    <string name="verdict_parse_error_tts" translatable="false">The Judge is perplexed.</string>
+    <string name="clash_waiting_for_opponent" translatable="false">Waiting for your opponent\'s choice.</string>
+    <string name="clash_waiting_for_judge" translatable="false">Please wait for the AI Judge to awaken.</string>
+    <string name="clash_no_cards_in_deck" translatable="false">No cards in deck \'%1$s\'.</string>
+    <string name="clash_tournament_finished" translatable="false">Tournament finished!</string>
+    <string name="dialog_arena_ready_title" translatable="false">Arena Ready!</string>
+    <string name="dialog_arena_ready_message" translatable="false">Your teams are complete. Start the Clash?</string>
+    <string name="dialog_launch" translatable="false">Launch</string>
+    <string name="dialog_teams_complete_title" translatable="false">Teams Complete</string>
+    <string name="dialog_waiting_for_host_message" translatable="false">Waiting for the host to start the Clash...</string>
+    <string name="clash_setup_dialog_title" translatable="false">Clash Preparation</string>
+    <string name="clash_judge_status_placeholder" translatable="false">Waiting for Judge configuration...</string>
+    <string name="clash_judge_status_format" translatable="false">Queen: %1$s | Brain: %2$s | Temp: %3$.2f</string>
+    <string name="clash_selector_title_format" translatable="false">Player %1$d - Deck %2$s</string>
+
+    <!-- Clash Duel -->
+    <string name="clash_duel_vs" translatable="false">VS</string>
+    <string name="clash_duel_button_previous" translatable="false">Previous</string>
+    <string name="clash_duel_button_next" translatable="false">Next</string>
+    <string name="clash_duel_button_finish" translatable="false">Finish</string>
+    <string name="clash_duel_question_placeholder" translatable="false">...</string>
+
+    <!-- ForgeLive -->
+    <string name="bourdon_avatar_desc" translatable="false">Bourdon\'s avatar</string>
+    <string name="bourdon_message_placeholder" translatable="false">Bourdon\'s message...</string>
+    <string name="button_capture_now" translatable="false">Capture now</string>
+    <string name="button_hold_to_speak_desc" translatable="false">Hold to speak</string>
+    <string name="button_skip" translatable="false">Skip</string>
+    <string name="button_switch_camera_desc" translatable="false">Switch camera</string>
+    <string name="bourdon_ask_intent" translatable="false">Hey Forager, do you have an idea of what pollen you want to collect?</string>
+    <string name="bourdon_confirm_intent" translatable="false">Okay, I got it: \"%1$s\"! We\'ll make some Honey out of this. You can now capture your pollen.</string>
+    <string name="bourdon_skip_intent" translatable="false">Perfect! Show me directly what you want to forge.</string>
+    <string name="bourdon_harvest_complete" translatable="false">Great harvest! Shall we start forging or do you want to try again?</string>
+    <string name="bourdon_harvest_complete_alt" translatable="false">Good harvest! Do you want to start making Honey or restart the pollen capture?</string>
+    <string name="bourdon_save_pollen" translatable="false">Saving pollen to the Hive...</string>
+    <string name="bourdon_save_error" translatable="false">Error: could not save pollen images.</string>
+    <string name="bourdon_save_success" translatable="false">Pollen saved! Automatic identification has started.</string>
+    <string name="pollen_capture_button_default" translatable="false">Capture</string>
+    <string name="pollen_capture_button_full" translatable="false">Maximum Reached</string>
+    <string name="pollen_capture_button_format" translatable="false">Capture (%1$d/4)</string>
+    <string name="pollen_save_toast" translatable="false">Pollen saved!</string>
+    <string name="pollen_capture_error_toast" translatable="false">Capture error.</string>
+    <string name="pollen_capture_failed_toast" translatable="false">Capture failed</string>
+    <string name="button_finish_harvest" translatable="false">Finish</string>
+    <string name="button_restart_harvest" translatable="false">Restart</string>
+    <string name="button_send_to_hive" translatable="false">Send to Hive</string>
+    <string name="specialist_report_dialog_title" translatable="false">Specialist Analysis Report</string>
+    <string name="specialist_report_global_title" translatable="false">--- Global Analysis Report ---</string>
+    <string name="specialist_report_no_global" translatable="false">No global classification found.</string>
+    <string name="specialist_report_specialist_opinion" translatable="false">Specialist Opinion (%1$s):</string>
+    <string name="specialist_report_item" translatable="false">  - %1$s (%.1f%%)</string>
+    <string name="specialist_report_objects_title" translatable="false">\n--- Detected Objects (%1$d) ---</string>
+    <string name="specialist_report_no_objects" translatable="false">No objects detected.</string>
+    <string name="specialist_report_object_item" translatable="false">%1$d. %2$s (%.1f%%)</string>
+    <string name="specialist_report_unknown_object" translatable="false">Unknown Object</string>
+    <string name="specialist_report_object_specialist_item" translatable="false">  - %1$s: %2$s</string>
+    <string name="vosk_model_loaded_toast" translatable="false">Voice model \'%1$s\' loaded.</string>
+    <string name="bourdon_welcome_capture" translatable="false">Welcome Forager! Point your camera at anything you wish to forge.</string>
+
+
+    <!-- ForgeWorkshop -->
+    <string name="workshop_title" translatable="false">Royal Forge Workshop</string>
+    <string name="deck_emoji_raw" translatable="false">?</string>
+    <string name="deck_name_raw" translatable="false">Raw</string>
+    <string name="workshop_button_back_desc" translatable="false">Back</string>
+    <string name="workshop_filter_raw_desc" translatable="false">Filter by Raw Pollen</string>
+    <string name="workshop_filter_food_desc" translatable="false">Filter by Food Deck</string>
+    <string name="workshop_filter_plant_desc" translatable="false">Filter by Plant Deck</string>
+    <string name="workshop_filter_insect_desc" translatable="false">Filter by Insect Deck</string>
+    <string name="workshop_filter_bird_desc" translatable="false">Filter by Bird Deck</string>
+    <string name="workshop_selected_image_desc" translatable="false">Selected pollen grain image</string>
+    <string name="workshop_button_reject_grain" translatable="false">Reject this Grain</string>
+    <string name="workshop_expand_section_desc" translatable="false">Expand/Collapse section</string>
+    <string name="workshop_grain_id_format" translatable="false">Grain ID: %1$s...</string>
+    <string name="workshop_deck_format" translatable="false">Deck: %1$s</string>
+    <string name="workshop_results_count" translatable="false">(%1$d results)</string>
+    <string name="workshop_validate_identification_first" translatable="false">Validate identification first</string>
+    <string name="workshop_forge_ingredients_first" translatable="false">Forge Ingredients first</string>
+    <string name="dialog_error_details_title" translatable="false">Error Details</string>
+    <string name="error_identification_not_validated" translatable="false">Identification must be validated before refining other properties.</string>
+    <string name="error_ingredients_not_forged" translatable="false">Cannot forge allergens until ingredients have been successfully forged.</string>
+    <string name="error_queen_model_file_not_found_format" translatable="false">AI Queen file \'%1$s\' not found.</string>
+    <string name="error_queen_init_failed_format" translatable="false">AI Queen initialization failed: %1$s</string>
+    <string name="error_pollen_parent_not_found" translatable="false">Parent pollen grain not found.</string>
+    <string name="error_swarm_report_missing" translatable="false">Swarm report is missing.</string>
+    <string name="error_card_not_found_for_refinement" translatable="false">Card not available for property refinement.</string>
+    <string name="error_json_malformed_or_incomplete" translatable="false">The JSON result is malformed or incomplete.</string>
+    <string name="fallback_reasoning_visual" translatable="false">Visual analysis not extracted</string>
+    <string name="fallback_reasoning_correlation" translatable="false">Correlation by Regex</string>
+    <string name="error_validation_parsing_failed" translatable="false">Both smart JSON parsing and Regex fallback failed.</string>
+    <string name="error_json_malformed" translatable="false">The JSON response is malformed.</string>
+    <string name="error_json_key_missing" translatable="false">Key \'%1$s\' is missing in the JSON response.</string>
+    <string name="workshop_loading_grains" translatable="false">Loading pollen grains...</string>
+    <string name="workshop_no_grains_to_forge" translatable="false">No pollen grains to forge.</string>
+    <string name="workshop_awaiting_validation" translatable="false">Identification awaiting validation.</string>
+    <string name="workshop_ready_to_refine" translatable="false">Ready to refine.</string>
+    <string name="workshop_preparing_competition" translatable="false">Preparing competition for \'%1$s\'...</string>
+    <string name="workshop_no_queens_installed" translatable="false">Error: No AI Queens are installed for the competition!</string>
+    <string name="workshop_validating_identification" translatable="false">Validating identification...</string>
+    <string name="workshop_validation_error" translatable="false">Validation error: %1$s</string>
+    <string name="workshop_validating_property" translatable="false">Validating \'%1$s\'...</string>
+    <string name="workshop_delete_grain_dialog_title" translatable="false">Confirmation Required</string>
+    <string name="workshop_delete_grain_dialog_message" translatable="false">Are you sure you want to delete this pollen grain and all associated data (card, analyses, images)? This action is irreversible.</string>
+    <string name="workshop_button_delete" translatable="false">Yes, delete</string>
+    <string name="workshop_competition_summary_title" translatable="false">Competition Summary</string>
+    <string name="workshop_summary_proposal_format" translatable="false">%1$d Queens propose: \"%2$s\"</string>
+    <string name="workshop_button_validate" translatable="false">Validate</string>
+    <string name="workshop_launch_competition" translatable="false">Launch Competition ⚔️</string>
+    <string name="workshop_refinement_title_format" translatable="false">Refining: %1$s</string>
+    <string name="property_title_identification" translatable="false">Main Identification</string>
+    <string name="property_title_description" translatable="false">Narrative Description</string>
+    <string name="property_title_ingredients" translatable="false">Ingredient List</string>
+    <string name="property_title_allergens" translatable="false">Allergen Detection</string>
+    <string name="property_title_energy" translatable="false">Energy Value</string>
+    <string name="property_title_scientific_name" translatable="false">Scientific Name</string>
+    <string name="property_title_vernacular_name" translatable="false">Common Name</string>
+    <string name="property_title_flowering" translatable="false">Flowering Period</string>
+    <string name="property_title_diet" translatable="false">Diet</string>
+    <string name="property_title_wingspan" translatable="false">Wingspan</string>
+    <string name="workshop_raw_pollen_title" translatable="false">Raw Pollen</string>
+    <string name="workshop_deck_unknown" translatable="false">Deck: To be identified</string>
+    <string name="workshop_no_grains_in_deck" translatable="false">No grains in this category.</string>
+    <!-- BOURDON'S FIX: Strings for Intelligent Forge Button -->
+    <string name="workshop_competition_in_progress" translatable="false">Competition in Progress...</string>
+    <string name="workshop_relaunch_competition" translatable="false">Relaunch Competition 🔄</string>
+    <string name="dialog_relaunch_title" translatable="false">Relaunch Competition?</string>
+    <string name="dialog_relaunch_message" translatable="false">This will delete all current analysis results for this property and create a new set of tasks. Are you sure?</string>
+    <string name="dialog_relaunch_confirm" translatable="false">Yes, Relaunch</string>
+
+    <!-- RoyalAudience -->
+    <string name="audience_title_generic" translatable="false">Open Audience</string>
+    <string name="audience_title_loading" translatable="false">Preparing Audience...</string>
+    <string name="error_card_not_found" translatable="false">Card not found in database.</string>
+    <string name="error_no_queen_installed_or_selected" translatable="false">No AI Queen is installed or selected.</string>
+    <string name="error_queen_model_file_not_found" translatable="false">AI Queen model file not found.</string>
+    <string name="error_queen_init_failed" translatable="false">Queen initialization failed: %1$s</string>
+    <string name="queen_switching_message" translatable="false">Queen %1$s is retiring. Queen %2$s is preparing her arrival...</string>
+    <string name="queen_waking_up" translatable="false">The Queen is waking up, please wait...</string>
+    <string name="queen_ready_to_chat" translatable="false">There, I am ready. What would you like to discuss?</string>
+    <string name="queen_settings_updated" translatable="false">Queen\'s decrees updated.</string>
+    <string name="audience_no_voice_model" translatable="false">No voice model is loaded. Please import one via the Tools.</string>
+    <string name="audience_default_voice_model_loaded" translatable="false">Default voice model loaded: \'%1$s\'.</string>
+    <string name="audience_no_queen_available" translatable="false">No AI Queen is available. Please add one via the Tools.</string>
+    <string name="audience_no_queen_available_short" translatable="false">No Queen</string>
+    <string name="audience_dialog_select_queen_title" translatable="false">Choose the Queen</string>
+    <string name="audience_toolbar_title" translatable="false">AI Chat</string>
+    <string name="audience_button_back_description" translatable="false">Back</string>
+    <string name="audience_button_settings_description" translatable="false">Configure the Queen</string>
+    <string name="chat_input_hint" translatable="false">Chat with the Queen...</string>
+    <string name="chat_attach_button_desc" translatable="false">Attach an image</string>
+    <string name="chat_mic_button_desc" translatable="false">Dictate question</string>
+    <string name="chat_send_button_desc" translatable="false">Send question</string>
+
+    <!-- DeckViewer & CardDetails -->
+    <string name="deck_select_food_desc" translatable="false">Select Food Deck</string>
+    <string name="deck_emoji_food" translatable="false">🍔</string>
+    <string name="deck_name_food" translatable="false">Food</string>
+    <string name="deck_select_plant_desc" translatable="false">Select Plant Deck</string>
+    <string name="deck_emoji_plant" translatable="false">🌿</string>
+    <string name="deck_name_plant" translatable="false">Plant</string>
+    <string name="deck_select_insect_desc" translatable="false">Select Insect Deck</string>
+    <string name="deck_emoji_insect" translatable="false">🐞</string>
+    <string name="deck_name_insect" translatable="false">Insect</string>
+    <string name="deck_select_bird_desc" translatable="false">Select Bird Deck</string>
+    <string name="deck_emoji_bird" translatable="false">🐦</string>
+    <string name="deck_name_bird" translatable="false">Bird</string>
+    <string name="card_deleted_toast" translatable="false">\'%1$s\' has been deleted.</string>
+    <string name="translation_requested_toast" translatable="false">Translation for \'%1$s\' has been requested and will be processed in the background.</string>
+    <string name="card_details_confidence_format" translatable="false">Confidence: %.2f</string>
+    <string name="card_details_description_title" translatable="false">Description</string>
+    <string name="card_details_reasoning_format" translatable="false">Visual Analysis: %1$s\nEvidence Correlation: %2$s</string>
+    <string name="card_details_no_stats_available" translatable="false">No stats available.</string>
+    <string name="card_details_button_delete" translatable="false">Delete</string>
+    <string name="card_details_button_quiz" translatable="false">Launch Quiz</string>
+    <string name="card_details_button_translate" translatable="false">Translate</string>
+    <string name="card_details_button_chat" translatable="false">Discuss</string>
+
+    <!-- Quiz -->
+    <string name="quiz_no_questions_error" translatable="false">Error: No quiz questions found.</string>
+    <string name="quiz_toolbar_title_format" translatable="false">Quiz: %1$s</string>
+    <string name="quiz_progress_format" translatable="false">Question %1$d / %2$d</string>
+    <string name="quiz_select_answer_prompt" translatable="false">Please select an answer.</string>
+    <string name="quiz_feedback_correct" translatable="false">Correct answer!</string>
+    <string name="quiz_feedback_incorrect" translatable="false">Incorrect. The correct answer was:\n\"%1$s\"</string>
+    <string name="quiz_final_score_title" translatable="false">Quiz Finished!</string>
+    <string name="quiz_final_score_message" translatable="false">Your score: %1$d / %2$d</string>
+    <string name="quiz_button_finish" translatable="false">Finish</string>
+    <string name="quiz_button_submit" translatable="false">Submit</string>
+    <string name="quiz_button_next" translatable="false">Next Question</string>
+
+    <!-- BOURDON'S I18N FIX: Worker Notifications -->
+    <string name="notification_channel_name" translatable="false">Kikko Forge Background Work</string>
+    <string name="notification_title" translatable="false">The Hive is working...</string>
+    <string name="notification_forge_preparing" translatable="false">The Hive\'s Forge is preparing...</string>
+    <string name="notification_forge_awakens" translatable="false">The Forge awakens...</string>
+    <string name="notification_queen_identifying" translatable="false">Queen \'%1$s\' is identifying the pollen...</string>
+    <string name="notification_queen_identifying_streaming" translatable="false">The Queen is identifying... (%1$d chars generated)</string>
+</resources>

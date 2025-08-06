@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_selector_panel"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:visibility="gone"
+    tools:visibility="visible"
+    app:cardBackgroundColor="@color/kikko_dark_gray"
+    app:strokeColor="@color/kikko_gold_light"
+    app:strokeWidth="1dp"
+    app:cardElevation="8dp"
+    app:cardCornerRadius="16dp"
+    app:layout_constraintWidth_percent="0.8"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/selector_panel_deck_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:src="@drawable/ic_deck_food"
+            app:tint="@color/kikko_honey_yellow"/>
+
+        <TextView
+            android:id="@+id/selector_panel_deck_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/kikko_honey_yellow"
+            app:layout_constraintStart_toEndOf="@id/selector_panel_deck_icon"
+            app:layout_constraintTop_toTopOf="@id/selector_panel_deck_icon"
+            app:layout_constraintBottom_toBottomOf="@id/selector_panel_deck_icon"
+            app:layout_constraintEnd_toStartOf="@id/selector_panel_close_button"
+            tools:text="Sélectionnez un champion du Deck Food"/>
+
+        <ImageButton
+            android:id="@+id/selector_panel_close_button"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/kikko_honey_yellow"/>
+
+        <!-- BOURDON'S FIX: Hauteur ajustée pour permettre une grille visible -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/selector_panel_recyclerview"
+            android:layout_width="0dp"
+            android:layout_height="240dp"
+            android:layout_marginTop="16dp"
+            android:clipToPadding="false"
+            app:layout_constraintTop_toBottomOf="@id/selector_panel_deck_icon"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:listitem="@layout/item_card_preview"
+            tools:layout_manager="androidx.recyclerview.widget.GridLayoutManager"
+            tools:spanCount="4"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

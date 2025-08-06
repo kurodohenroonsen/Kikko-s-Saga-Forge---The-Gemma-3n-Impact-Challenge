@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BOURDON'S FINAL & CORRECTED REFORGE: This is the definitive version. -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context=".clash.ui.ClashDuelFragment">
+
+    <!-- La vidéo de fond, gérée par ExoPlayer pour un rendu parfait -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/duel_background_video_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:resize_mode="zoom"
+        app:use_controller="false"/>
+
+    <!-- La question, toujours au sommet -->
+    <TextView
+        android:id="@+id/duel_question_textview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:gravity="center"
+        android:fontFamily="@font/luckiest_guy"
+        android:textColor="@color/kikko_honey_yellow"
+        android:textSize="22sp"
+        android:shadowColor="@color/black"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Quel aliment a un indice glycémique plus bas ?" />
+
+    <include
+        android:id="@+id/duel_player1_card"
+        layout="@layout/item_clash_champion_card"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:rotation="-30"
+        app:layout_constraintDimensionRatio="W,1.4"
+        app:layout_constraintBottom_toTopOf="@id/guideline_bottom_cards"
+        app:layout_constraintEnd_toStartOf="@+id/guideline_middle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/duel_question_textview"
+        app:layout_constraintWidth_percent="0.20"
+        app:layout_constraintVertical_bias="0.4" />
+
+    <TextView
+        android:id="@+id/duel_vs_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/luckiest_guy"
+        android:shadowColor="@color/black"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:shadowRadius="3"
+        android:text="@string/clash_duel_vs"
+        android:textColor="@color/kikko_honey_yellow"
+        android:textSize="48sp"
+        app:layout_constraintBottom_toBottomOf="@id/duel_player1_card"
+        app:layout_constraintEnd_toStartOf="@id/duel_player2_card"
+        app:layout_constraintStart_toEndOf="@id/duel_player1_card"
+        app:layout_constraintTop_toTopOf="@id/duel_player1_card" />
+
+    <include
+        android:id="@+id/duel_player2_card"
+        layout="@layout/item_clash_champion_card"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:rotation="30"
+        app:layout_constraintDimensionRatio="W,1.4"
+        app:layout_constraintBottom_toBottomOf="@id/duel_player1_card"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/guideline_middle"
+        app:layout_constraintTop_toTopOf="@id/duel_player1_card"
+        app:layout_constraintWidth_percent="0.20" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_middle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_bottom_cards"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.65" />
+
+
+    <ScrollView
+        android:id="@+id/duel_reasoning_scrollview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@id/duel_navigation_container"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/guideline_bottom_cards">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/duel_streaming_reasoning_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/debug_border"
+                android:padding="8dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/kikko_honey_yellow"
+                android:visibility="gone"
+                tools:text="Streaming tokens from the judge will appear here..." />
+
+            <TextView
+                android:id="@+id/duel_reasoning_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:visibility="invisible"
+                android:fontFamily="@font/luckiest_guy"
+                android:textColor="@color/kikko_honey_yellow"
+                android:textSize="20sp"
+                android:shadowColor="@color/black"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                tools:text="L'HONEY A UN INDICE GLYCÉMIQUE PLUS BAS..."
+                tools:visibility="visible" />
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/duel_navigation_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/duel_previous_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clash_duel_button_previous"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+        <Space
+            android:id="@+id/duel_nav_spacer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/duel_loading_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+        <Button
+            android:id="@+id/duel_next_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clash_duel_button_next"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+        <Button
+            android:id="@+id/duel_finish_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clash_duel_button_finish"
+            android:visibility="gone"
+            tools:visibility="visible"/>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sort_by_prompt">Trier par…</string>
+    <string name="app_name">KiKKo Saga Forge</string>
+    <string name="model_manager">Gestion des Modèles</string>
+    <string name="downloaded_size">%1$s téléchargé</string>
+    <string name="cancel">Annuler</string>
+    <string name="ok">OK</string>
+    <string name="confirm_delete_model_dialog_title">Supprimer le téléchargement</string>
+    <string name="confirm_delete_model_dialog_content">Êtes-vous sûr de vouloir supprimer le modèle téléchargé \"%s\" ?</string>
+    <string name="notification_title_success">Téléchargement du modèle réussi</string>
+    <string name="notification_content_success">Le modèle \"%s\" a été téléchargé</string>
+    <string name="notification_title_fail">Échec du téléchargement du modèle</string>
+    <string name="notification_content_fail">Impossible de télécharger le modèle \"%s\"</string>
+    <string name="chat_textinput_placeholder">Écrire un message…</string>
+    <string name="chat_you">Vous</string>
+    <string name="chat_llm_agent_name">LLM</string>
+    <string name="chat_generic_agent_name">Modèle</string>
+    <string name="chat_generic_result_name">Résultat</string>
+    <string name="model_not_downloaded_msg">Modèle non encore téléchargé</string>
+    <string name="model_is_initializing_msg">Initialisation du modèle…</string>
+    <string name="text_input_placeholder_text_classification">Écrire une critique de film à classifier…</string>
+    <string name="text_image_generation_text_field_placeholder">Écrire un prompt…</string>
+    <string name="text_input_placeholder_llm_chat">Écrire un prompt…</string>
+    <string name="run_again">Ré-exécuter</string>
+    <string name="benchmark">Lancer le benchmark</string>
+    <string name="warming_up">préparation…</string>
+    <string name="running">en cours</string>
+
+    <string name="debug_activity_title">Kikko Labo de Test &amp; Débug</string>
+    <string name="model_management_title">Gestion des Modèles</string>
+    <string name="service_testing_title">Test des Services</string>
+
+    <string name="status_downloading">Téléchargement... %1$d%%</string>
+    <string name="status_unzipping">Décompression...</string>
+    <string name="status_ready">Prêt</string>
+    <string name="status_not_downloaded">Non Téléchargé</string>
+    <string name="status_error">Erreur</string>
+    <string name="button_download">Télécharger</string>
+    <string name="button_delete">Supprimer</string>
+
+    <string name="vosk_test_title">Vosk Reconnaissance Vocale</string>
+    <string name="button_test_vosk">Démarrer l\'écoute</string>
+    <string name="button_stop_vosk">Arrêter l\'écoute</string>
+    <string name="vosk_status_idle">Statut : Inactif</string>
+    <string name="vosk_status_listening">Statut : Écoute en cours...</string>
+    <string name="vosk_status_result">Résultat :</string>
+    <string name="vosk_permission_denied">Erreur : Permission du microphone refusée.</string>
+
+    <string name="ml_kit_test_title">Tests ML Kit</string>
+    <string name="ocr_test_title">Reconnaissance de Texte (OCR)</string>
+    <string name="button_run_ocr_test">Lancer test OCR</string>
+    <string name="object_detection_title">Détection d\'Objets</string>
+    <string name="button_run_object_test">Lancer test Détection</string>
+
+    <string name="language_id_title">Identification &amp; Traduction de Langue</string>
+    <string name="language_id_hint">Écrivez du texte ici...</string>
+    <string name="button_run_language_test">Identifier &amp; Traduire (vers FR)</string>
+
+    <string name="gemma_test_title">Test Gemma LLM</string>
+    <string name="gemma_prompt_hint">Entrez un prompt pour Gemma...</string>
+    <string name="button_run_gemma_test">Envoyer à Gemma</string>
+    <string name="gemma_status_thinking">Gemma réfléchit...</string>
+    <string name="gemma_status_result">Réponse de Gemma :</string>
+    <string name="model_not_initialized">Modèle non initialisé</string>
+
+    <string name="dialog_connection_title">Accepter la connexion de %1$s ?</string>
+    <string name="dialog_connection_message">Confirmez que le code est : %1$s</string>
+    <string name="dialog_accept">Accepter</string>
+    <string name="dialog_decline">Refuser</string>
+    <string name="card_record_format" translatable="false">🏆 %1$d / 💔 %2$d</string>
+    <string name="card_distance_format_m" translatable="false">%.1fm</string>
+    <string name="card_distance_format_cm" translatable="false">%.0fcm</string>
+
+</resources>

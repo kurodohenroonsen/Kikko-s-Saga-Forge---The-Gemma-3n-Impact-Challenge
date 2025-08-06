@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="KikkoText" parent="Widget.AppCompat.TextView">
+        <item name="android:textColor">@color/kikko_on_surface</item>
+    </style>
+
+    <style name="KikkoText.Title">
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="KikkoText.Body">
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="KikkoText.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/kikko_on_surface_variant</item>
+    </style>
+
+    <style name="KikkoButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="KikkoButton.Secondary">
+        <item name="android:textColor">@color/kikko_primary</item>
+        <item name="strokeColor">@color/kikko_outline</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="backgroundTint">@color/kikko_surface</item>
+    </style>
+
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BOURDON'S NOTE: This file handles strings that change based on quantity (singular/plural). -->
+    <plurals name="import_saga_success" translatable="false">
+        <item quantity="one">%1$d new card imported successfully!</item>
+        <item quantity="other">%1$d new cards imported successfully!</item>
+    </plurals>
+    <plurals name="workshop_tasks_ready" translatable="false">
+        <item quantity="one">%1$d task ready for the tournament.</item>
+        <item quantity="other">%1$d tasks ready for the tournament.</item>
+    </plurals>
+</resources>

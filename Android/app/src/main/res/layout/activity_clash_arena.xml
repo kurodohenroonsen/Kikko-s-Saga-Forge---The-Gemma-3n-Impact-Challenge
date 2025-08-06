@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/clash_arena_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/kikko_bark_brown"
+    tools:context=".clash.ui.ClashActivity"
+    tools:ignore="ContentDescription">
+
+    <!-- BOURDON'S REFACTOR: Le ViewPager pour les duels -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/tournament_viewpager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/colorSurfaceContainer"
+        android:visibility="gone"
+        tools:visibility="gone" />
+
+    <!-- BOURDON'S REFACTOR V3: Remplacement de VideoView par PlayerView pour la sélection -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/clash_background_video_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:resize_mode="zoom"
+        app:use_controller="false" />
+
+    <!-- BOURDON'S REFACTOR: Le groupe pour la vue de préparation -->
+    <androidx.constraintlayout.widget.Group
+        android:id="@+id/clash_setup_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:constraint_referenced_ids="clash_background_video_view,clash_title,clash_button_random,clash_button_settings,clash_button_radar,clash_button_start_solo,player1_selection_container,player2_selection_container,clash_queen_status,guideline_center"
+        android:visibility="visible"
+        tools:visibility="visible"/>
+
+    <!-- Le reste du layout reste identique -->
+
+    <LinearLayout
+        android:id="@+id/clash_judge_loading_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp"
+        android:background="@drawable/scroll_background"
+        android:backgroundTint="#A0000000"
+        android:elevation="10dp"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/clash_judge_awakening"
+            android:fontFamily="@font/luckiest_guy"
+            android:textColor="@color/kikko_honey_yellow"
+            android:textSize="18sp"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/clash_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:fontFamily="@font/luckiest_guy"
+        android:shadowColor="@color/black"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2"
+        android:text="@string/clash_title"
+        android:textColor="@color/kikko_honey_yellow"
+        android:textSize="34sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/clash_button_random"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:src="@android:drawable/ic_menu_rotate"
+        android:contentDescription="@string/clash_button_random_desc"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/kikko_honey_yellow" />
+
+    <ImageButton
+        android:id="@+id/clash_button_settings"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:src="@android:drawable/ic_menu_manage"
+        android:contentDescription="@string/clash_button_settings_desc"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/kikko_honey_yellow" />
+
+    <ImageButton
+        android:id="@+id/clash_button_radar"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="16dp"
+        android:src="@android:drawable/ic_menu_compass"
+        android:contentDescription="@string/clash_button_radar_desc"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/kikko_honey_yellow" />
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/clash_button_start_solo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/clash_button_start_solo"
+        android:enabled="false"
+        app:icon="@drawable/ic_swords"
+        app:layout_constraintBottom_toTopOf="@id/clash_queen_status"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/clash_title"
+        app:layout_constraintVertical_bias="0.9" />
+
+    <LinearLayout
+        android:id="@+id/player1_selection_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="4dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/guideline_center">
+        <FrameLayout android:id="@+id/p1_slot_food" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p1_deck_food" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🍔" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p1_thumb_food" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p1_slot_plant" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p1_deck_plant" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🌿" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p1_thumb_plant" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p1_slot_insect" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p1_deck_insect" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🐞" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p1_thumb_insect" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p1_slot_bird" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p1_deck_bird" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🐦" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p1_thumb_bird" android:visibility="gone"/>
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/player2_selection_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="4dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/guideline_center"
+        app:layout_constraintEnd_toEndOf="parent">
+        <FrameLayout android:id="@+id/p2_slot_food" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p2_deck_food" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🍔" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p2_thumb_food" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p2_slot_plant" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p2_deck_plant" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🌿" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p2_thumb_plant" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p2_slot_insect" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p2_deck_insect" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🐞" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p2_thumb_insect" android:visibility="gone"/>
+        </FrameLayout>
+        <FrameLayout android:id="@+id/p2_slot_bird" android:layout_width="80dp" android:layout_height="100dp" android:layout_margin="4dp">
+            <Button android:id="@+id/p2_deck_bird" style="@style/Widget.AppCompat.Button.Borderless" android:layout_width="match_parent" android:layout_height="match_parent" android:text="🐦" android:textSize="34sp" android:background="@drawable/scroll_background" android:clickable="false" android:focusable="false"/>
+            <include layout="@layout/item_clash_champion_thumbnail" android:id="@+id/p2_thumb_bird" android:visibility="gone"/>
+        </FrameLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/clash_queen_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#A0000000"
+        android:gravity="center"
+        android:padding="4dp"
+        android:textColor="@color/kikko_honey_yellow"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="La Reine est prête pour le jugement." />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/p2p_panel"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#E61C1C1E"
+        android:elevation="16dp"
+        android:translationX="2000dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="0.5"
+        tools:translationX="0dp">
+
+        <be.heyman.android.ai.kikko.clash.ui.views.RadarView
+            android:id="@+id/p2p_panel_radar_view"
+            android:background="@drawable/radar_bourdon"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/p2p_panel_close_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/kikko_honey_yellow"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/p2p_panel_close_desc"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_margin="8dp"/>
+
+        <TextView
+            android:id="@+id/p2p_panel_status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:gravity="center"
+            android:textColor="@color/kikko_honey_yellow"
+            app:layout_constraintBottom_toTopOf="@id/p2p_panel_recycler_view"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="Recherche en cours..." />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/p2p_panel_recycler_view"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#99000000"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHeight_percent="0.4"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:listitem="@layout/item_player_card" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <include
+        layout="@layout/layout_card_selector_panel"
+        android:id="@+id/card_selector_panel_include" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

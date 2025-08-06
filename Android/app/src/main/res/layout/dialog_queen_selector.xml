@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BOURDON'S ADDITION: Le layout pour le dialogue de sélection de la Reine. -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:minWidth="320dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Choisir la Reine"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:layout_marginBottom="16dp"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/queen_selector_recyclerview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="400dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/item_queen_model_selection"
+        tools:itemCount="3"/>
+
+    <TextView
+        android:id="@+id/queen_selector_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Aucune Reine IA n'est disponible. Veuillez en ajouter via les Outils."
+        android:gravity="center"
+        android:padding="16dp"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+</LinearLayout>

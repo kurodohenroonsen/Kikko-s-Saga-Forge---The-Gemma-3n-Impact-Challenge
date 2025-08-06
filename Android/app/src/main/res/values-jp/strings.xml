@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sort_by_prompt">並べ替え…</string>
+    <string name="app_name">KiKKo サーガフォージ</string>
+    <string name="model_manager">モデル管理</string>
+    <string name="downloaded_size">%1$s ダウンロード済み</string>
+    <string name="cancel">キャンセル</string>
+    <string name="ok">OK</string>
+    <string name="confirm_delete_model_dialog_title">ダウンロードを削除</string>
+    <string name="confirm_delete_model_dialog_content">ダウンロードしたモデル「%s」を本当に削除しますか？</string>
+    <string name="notification_title_success">モデルのダウンロードに成功しました</string>
+    <string name="notification_content_success">モデル「%s」がダウンロードされました</string>
+    <string name="notification_title_fail">モデルのダウンロードに失敗しました</string>
+    <string name="notification_content_fail">モデル「%s」のダウンロードに失敗しました</string>
+    <string name="chat_textinput_placeholder">メッセージを入力…</string>
+    <string name="chat_you">あなた</string>
+    <string name="chat_llm_agent_name">LLM</string>
+    <string name="chat_generic_agent_name">モデル</string>
+    <string name="chat_generic_result_name">結果</string>
+    <string name="model_not_downloaded_msg">モデルはまだダウンロードされていません</string>
+    <string name="model_is_initializing_msg">モデルを初期化中…</string>
+    <string name="text_input_placeholder_text_classification">分類する映画のレビューを入力…</string>
+    <string name="text_image_generation_text_field_placeholder">プロンプトを入力…</string>
+    <string name="text_input_placeholder_llm_chat">プロンプトを入力…</string>
+    <string name="run_again">再実行</string>
+    <string name="benchmark">ベンチマークを実行</string>
+    <string name="warming_up">準備中…</string>
+    <string name="running">実行中</string>
+
+    <string name="debug_activity_title">Kikkoデバッグ＆テストラボ</string>
+    <string name="model_management_title">モデル管理</string>
+    <string name="service_testing_title">サービス テスト</string>
+
+    <string name="status_downloading">ダウンロード中... %1$d%%</string>
+    <string name="status_unzipping">解凍中...</string>
+    <string name="status_ready">準備完了</string>
+    <string name="status_not_downloaded">未ダウンロード</string>
+    <string name="status_error">エラー</string>
+    <string name="button_download">ダウンロード</string>
+    <string name="button_delete">削除</string>
+
+    <string name="vosk_test_title">Vosk 音声認識</string>
+    <string name="button_test_vosk">聞き取り開始</string>
+    <string name="button_stop_vosk">聞き取り停止</string>
+    <string name="vosk_status_idle">状態：待機中</string>
+    <string name="vosk_status_listening">状態：聞き取り中...</string>
+    <string name="vosk_status_result">結果：</string>
+    <string name="vosk_permission_denied">エラー：マイクの使用許可がありません。</string>
+
+    <string name="ml_kit_test_title">ML Kit テスト</string>
+    <string name="ocr_test_title">テキスト認識 (OCR)</string>
+    <string name="button_run_ocr_test">OCRテスト実行</string>
+    <string name="object_detection_title">物体検出</string>
+    <string name="button_run_object_test">物体検出テスト実行</string>
+
+    <string name="language_id_title">言語の識別と翻訳</string>
+    <string name="language_id_hint">ここにテキストを入力...</string>
+    <string name="button_run_language_test">識別して翻訳 (日本語へ)</string>
+
+    <string name="gemma_test_title">Gemma LLM テスト</string>
+    <string name="gemma_prompt_hint">Gemmaへのプロンプトを入力...</string>
+    <string name="button_run_gemma_test">Gemmaに送信</string>
+    <string name="gemma_status_thinking">Gemmaは考え中です...</string>
+    <string name="gemma_status_result">Gemmaの応答：</string>
+    <string name="model_not_initialized">モデルが初期化されていません</string>
+
+    <string name="dialog_connection_title">%1$sからの接続を承認しますか？</string>
+    <string name="dialog_connection_message">コードが %1$s であることを確認してください</string>
+    <string name="dialog_accept">承認</string>
+    <string name="dialog_decline">拒否</string>
+    <string name="card_record_format" translatable="false">🏆 %1$d / 💔 %2$d</string>
+    <string name="card_distance_format_m" translatable="false">%.1fm</string>
+    <string name="card_distance_format_cm" translatable="false">%.0fcm</string>
+
+</resources>

@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- —— Couleurs ——  -->
+    <!-- Vert clair pour la peau / pattes / tête -->
+    <group android:name="turtle"
+        android:translateX="0"
+        android:translateY="0">
+
+        <!-- Carapace extérieure (anneau épais) -->
+
+        <!-- Carapace intérieure (scute central) -->
+        <path
+            android:fillColor="#2E7D32"
+            android:pathData="
+                M12,6
+                a6,6 0 1,1 0,12
+                a6,6 0 1,1 0,-12" />
+
+
+        <!-- Tête (cercle) -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M12,0.0
+                a2.2,2.0 0 0,0.2 0,4.0
+                a2.2,2.0 0 0,1 0,-4.0" />
+
+        <!-- Pattes avant -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M4,4.5
+                a1.7,1.7 0 1,1 0,3.4
+                a1.7,1.7 0 1,1 0,-3.4" />
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M20,4.5
+                a1.7,1.7 0 1,1 0,3.4
+                a1.7,1.7 0 1,1 0,-3.4" />
+
+        <!-- Pattes arrière -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M4,16.5
+                a1.7,1.7 0 1,1 0,3.4
+                a1.7,1.7 0 1,1 0,-3.4" />
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M20,16.5
+                a1.7,1.7 0 1,1 0,3.4
+                a1.7,1.7 0 1,1 0,-3.4" />
+
+        <!-- Queue (petit triangle arrondi) -->
+        <path
+            android:fillColor="#4CAF50"
+            android:pathData="
+                M11,21.5
+                q1,1 2,0
+                v1.2 h-2z" />
+    </group>
+
+<path
+    android:fillColor="#FFD700"
+    android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z"/>
+<path
+    android:fillColor="#FFD700"
+    android:pathData="M12,5c-3.86,0 -7,3.14 -7,7s3.14,7 7,7 7,-3.14 7,-7 -3.14,-7 -7,-7zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"/>
+</vector>
