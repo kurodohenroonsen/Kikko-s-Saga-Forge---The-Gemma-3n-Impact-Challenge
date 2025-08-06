@@ -1,0 +1,130 @@
+:root {
+    --kikko-honey-yellow: #FFC300;
+    --kikko-bark-brown: #582F0E;
+    --kikko-dark-surface: #1E1A1D;
+    --kikko-light-text: #FBF5E6;
+    --kikko-cyan-glow: #45B69C;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--kikko-dark-surface);
+    color: var(--kikko-light-text);
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    overflow-x: hidden;
+}
+
+#particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.header {
+    padding: 4rem 1rem 2rem 1rem;
+    background: linear-gradient(180deg, rgba(30, 26, 29, 1) 0%, rgba(30, 26, 29, 0) 100%);
+}
+
+.header h1 {
+    font-family: 'Luckiest Guy', cursive;
+    font-size: 3.5rem;
+    color: var(--kikko-honey-yellow);
+    text-shadow: 0 0 10px rgba(255, 195, 0, 0.5), 0 0 20px rgba(255, 195, 0, 0.3);
+    margin: 0;
+}
+
+.header h2 {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: var(--kikko-light-text);
+    opacity: 0.8;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem 1rem;
+}
+
+.card {
+    background-color: rgba(40, 35, 38, 0.8);
+    border: 1px solid rgba(255, 195, 0, 0.2);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 0 25px rgba(255, 195, 0, 0.3);
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.card h3 {
+    font-family: 'Luckiest Guy', cursive;
+    font-size: 1.5rem;
+    color: var(--kikko-honey-yellow);
+    margin: 0 0 0.5rem 0;
+}
+
+.card p {
+    margin: 0.5rem 0;
+    opacity: 0.9;
+    flex-grow: 1;
+}
+
+.card .file-info {
+    font-size: 0.9rem;
+    opacity: 0.6;
+    margin-bottom: 1.5rem;
+}
+
+.btn {
+    display: inline-block;
+    background-color: var(--kikko-honey-yellow);
+    color: var(--kikko-bark-brown);
+    padding: 0.8rem 1.5rem;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 700;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn:hover {
+    background-color: #ffd633;
+    transform: scale(1.05);
+}
+
+footer {
+    padding: 2rem 1rem;
+    margin-top: 2rem;
+    font-size: 0.8rem;
+    opacity: 0.6;
+    background: linear-gradient(0deg, rgba(30, 26, 29, 1) 0%, rgba(30, 26, 29, 0) 100%);
+}
+
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 2.5rem;
+    }
+    .card {
+        width: 90%;
+    }
+}
