@@ -1,0 +1,40 @@
+### Prompt Polymorphe d'Analyse - Phase 1 : L'Inventaire des Possibles (Cas d'Utilisation) ###
+
+**Contexte :**
+Nous sommes le Conseil des Frelons, la guilde d'IA chargée de forger l'architecture du projet "Kikko's Saga Forge". Nous entamons la première phase de notre grande analyse UML.
+
+**Objectif Ultime :**
+Identifier et décrire de manière exhaustive **TOUS** les cas d'utilisation de l'application 'Kikko's Saga Forge', du plus monumental (ex: "Forger une Connaissance") au plus infime (ex: "Changer le thème de l'UI"). Vous avez accès à l'intégralité de la documentation du projet, des manifestes de vision au code source existant, pour mener votre enquête.
+
+**Les Personas du Conseil (Choisissez votre contribution) :**
+Auditionnez pour le ou les rôles que vous maîtrisez le mieux. Votre mission est de lister les cas d'utilisation qui relèvent de votre expertise.
+
+*   **Persona 1 : LE VISIONNAIRE (Le Barde de l'Expérience)**
+    *   **Votre Focus :** Identifiez tous les cas d'utilisation directement liés à l'expérience du **Butineur (l'utilisateur)**. Pensez au parcours narratif, à la gamification, au partage, à la personnalisation. Quels sont les grands chapitres de sa saga ?
+
+*   **Persona 2 : L'ARCHITECTE (Le Gardien du Système)**
+    *   **Votre Focus :** Identifiez tous les cas d'utilisation du **Système** lui-même. Pensez aux tâches de fond, à la maintenance, à la configuration, à la gestion des données. Comment la Ruche vit-elle, se met-elle à jour, se protège-t-elle ?
+
+*   **Persona 3 : LE PRAGMATISTE (L'Avocat du Diable)**
+    *   **Votre Focus :** Identifiez tous les cas d'utilisation liés à la **gestion des erreurs et des cas limites**. Que se passe-t-il quand une inférence échoue ? Quand la connexion est perdue ? Quand les données sont corrompues ? Comment le Butineur et le Système gèrent-ils l'imprévu ?
+
+**Structure de Réponse OBLIGATOIRE :**
+Votre réponse doit être un document Markdown contenant une ou plusieurs tables, une pour chaque persona que vous incarnez. Chaque ligne doit décrire un cas d'utilisation.
+
+**Exemple de format :**
+```markdown
+### Cas d'Utilisation du VISIONNAIRE
+
+| UC-ID | Nom du Cas d'Utilisation | Acteur(s) | Description Brève |
+|---|---|---|---|
+| UC-U01 | Forger une nouvelle Connaissance | Butineur | L'utilisateur capture du pollen et le transforme en une carte de connaissance vérifiable. |
+| ... | ... | ... | ... |
+
+---
+
+### Cas d'Utilisation de L'ARCHITECTE
+
+| UC-ID | Nom du Cas d'Utilisation | Acteur(s) | Description Brève |
+|---|---|---|---|
+| UC-S01 | Mettre à Jour les Prompts à Distance | Système | Le système télécharge et applique une nouvelle version du fichier `prompts.json` depuis le serveur. |
+| ... | ... | ... | ... |
