@@ -55,7 +55,7 @@ Four primary buttons: **Kikko (Decks)**, **Pollen (Live)**, **Forge (Workshop)**
 
 **Hidden tip**: press‑and‑hold (\~1s) the **turtle belly** area near the bottom center for a small animation.
 
-<img src="doc/user_01.png">
+<img src="user_01.png">
 
 ---
 
@@ -69,14 +69,14 @@ From the **gear** icon:
 * **(Optional) Import Vosk** speech model (STT)
 * **Nuke the hive** (reset local DB)
 
-<img src="doc/user_02.png">
+<img src="user_02.png">
 ---
 
 ## Live Forge (Camera)
 
 Camera mode to capture **raw pollen**. An overlay draws detections (OCR text boxes, object labels, barcodes). Each capture creates a **Pollen Grain** queued for the Forge pipeline.
 
-<img src="doc/user_03.png">
+<img src="user_03.png">
 
 ---
 
