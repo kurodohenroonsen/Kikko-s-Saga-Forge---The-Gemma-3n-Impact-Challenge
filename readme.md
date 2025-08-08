@@ -19,7 +19,7 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
 **Kikko’s Saga Forge** is a verifiable‑knowledge RPG for Android. Capture **raw pollen** with the camera (labels, barcodes, objects), let the **on‑device AI** forge it into collectible **knowledge cards**, then learn, quiz, and duel — all **offline**.
 
 - 📥 **Install**: download the APK (see releases) and allow unknown sources if prompted.  
-- 🤖 **On‑device AI**: runs locally; optional voice (Vosk) for speech‑to‑text.  
+- 🤖 **On‑device AI**: runs locally.  
 - 🧭 **Start here**: read the full guide → **[User Guide](./doc/user_guide.md)**.
 
 **"Forge your verifiable saga with an on-device AI. A new game to combat digital amnesia and restore trust in AI."**
