@@ -123,8 +123,7 @@ Pick a **mode** (Solo / P2P), choose your **champions** (cards by deck), then st
 
 <img src="user_08.png"  width="50%">
 
-> **IMG**
-> `![Clash duel](illustrations/userguide/clash_duel.png "PROMPT: split view with two big card images facing off; bright light burst at center; score/progress indicators; animated background muted; cinematic honey-gold theme")`
+<img src="user_10.png"  width="50%">
 
 ---
 
