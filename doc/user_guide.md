@@ -46,8 +46,6 @@
 
 The app may request: **Camera**, **Microphone** (if speech-to-text), **Notifications**, **Nearby Devices**/**Bluetooth** (P2P Clash), **Approx Location** (Clash radar). Grant only what you plan to use.
 
-> **IMG**
-> `![Runtime permissions popups](illustrations/userguide/permissions.png "PROMPT: collage of Android runtime permission popups for Camera, Microphone, Nearby devices, Notifications; styled to match Kikko’s honey-gold theme; no personal info")`
 
 ---
 
@@ -57,8 +55,7 @@ Four primary buttons: **Kikko (Decks)**, **Pollen (Live)**, **Forge (Workshop)**
 
 **Hidden tip**: press‑and‑hold (\~1s) the **turtle belly** area near the bottom center for a small animation.
 
-> **IMG**
-> `![Home with counters + secret area](illustrations/userguide/start_screen.png "PROMPT: cinematic 3D UI mockup, honey-gold hex grid frame, Start screen with 4 big buttons (Decks, Pollen, Forge, Clash), top-right tools icon, badges counters; translucent highlight over turtle belly labeled 'hold 1s secret'")`
+<img src="doc/user_01.png">
 
 ---
 
@@ -72,17 +69,14 @@ From the **gear** icon:
 * **(Optional) Import Vosk** speech model (STT)
 * **Nuke the hive** (reset local DB)
 
-> **IMG**
-> `![Tools modal](illustrations/userguide/tools_dialog.png "PROMPT: modal sheet listing actions: Import/Export Saga, Add model, Delete model (list), Manage prompts, Import Vosk, Reset database; honey-gold material UI")`
-
+<img src="doc/user_02.png">
 ---
 
 ## Live Forge (Camera)
 
 Camera mode to capture **raw pollen**. An overlay draws detections (OCR text boxes, object labels, barcodes). Each capture creates a **Pollen Grain** queued for the Forge pipeline.
 
-> **IMG**
-> `![Camera with overlay](illustrations/userguide/forge_live.png "PROMPT: smartphone camera viewfinder with honey-gold frame, green overlay around an ingredients list, small 'OCR' and 'Barcode' badges; callout: 'Capture to add RAW pollen'")`
+<img src="doc/user_03.png">
 
 ---
 
