@@ -62,7 +62,6 @@ From the **gear** icon:
 * **Import/Export a Saga** (.kikkoSaga)
 * **Add/Remove an AI model** (.task)
 * **Manage Prompts** (open the editor)
-* **(Optional) Import Vosk** speech model (STT)
 * **Nuke the hive** (reset local DB)
 
 <img src="user_02.png" width="50%">
@@ -103,12 +102,9 @@ Chat with the **Queen** (on‑device LLM):
 
 * **Model** button to choose a **.task** file
 * **Settings** (Temperature, Top‑K)
-* Optional **voice**: import a **Vosk** model for STT; use TTS for spoken replies
 * You can **attach an image** for contextual grounding
 
-<img src="user_07.png"  width="50%">
-
-<img src="user_08.png"  width="50%">
+<img src="user_09.png"  width="50%">
 
 ---
 
@@ -123,11 +119,9 @@ Browse prompt keys, **edit**, **save**, **import/export** a JSON, or **restore d
 
 Pick a **mode** (Solo / P2P), choose your **champions** (cards by deck), then start the **duel**. For P2P, use the **radar** to discover the opponent, **accept** the connection, and play.
 
-> **IMG**
-> `![Clash setup](illustrations/userguide/clash_setup.png "PROMPT: arena setup screen: judge status line (model/brain/temp); deck slots for Player 1 and Player 2; buttons Random/Settings/Radar; Start disabled until both ready")`
+<img src="user_07.png"  width="50%">
 
-> **IMG**
-> `![Clash P2P connect](illustrations/userguide/clash_p2p_connect.png "PROMPT: 'connection request' dialog with opponent name and short auth code, Accept/Decline buttons; background radar scanning animation")`
+<img src="user_08.png"  width="50%">
 
 > **IMG**
 > `![Clash duel](illustrations/userguide/clash_duel.png "PROMPT: split view with two big card images facing off; bright light burst at center; score/progress indicators; animated background muted; cinematic honey-gold theme")`
