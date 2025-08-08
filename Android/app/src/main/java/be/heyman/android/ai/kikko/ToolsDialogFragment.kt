@@ -16,6 +16,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import be.heyman.android.ai.kikko.data.ModelCatalogue
+import be.heyman.android.ai.kikko.prompt.PromptEditorActivity
 import be.heyman.android.ai.kikko.ui.adapters.LocalModelAdapter
 import be.heyman.android.ai.kikko.worker.DownloadManagerKikko
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -30,6 +31,8 @@ class ToolsDialogFragment : DialogFragment() {
         fun onAddModelRequested()
         fun onDeleteModelRequested(modelFile: File)
         fun onNukeDatabaseRequested()
+        // BOURDON'S ADDITION: Nouvelle méthode pour lancer l'éditeur de prompts.
+        fun onManagePromptsRequested()
     }
 
     private var listener: ToolsDialogListener? = null
@@ -44,6 +47,8 @@ class ToolsDialogFragment : DialogFragment() {
     private lateinit var queenAcceleratorRadioGroup: RadioGroup
     private lateinit var downloadModelsButton: Button
     private lateinit var downloadDecksButton: Button
+    // BOURDON'S ADDITION: Référence pour le nouveau bouton.
+    private lateinit var managePromptsButton: Button
 
 
     companion object {
@@ -83,6 +88,8 @@ class ToolsDialogFragment : DialogFragment() {
         setupSagaButtons(view)
         setupForgeSettings()
         setupNukeButton()
+        // BOURDON'S ADDITION: Appel à la nouvelle méthode de configuration.
+        setupPromptManagementButton()
     }
 
     private fun bindViews(view: View) {
@@ -92,6 +99,8 @@ class ToolsDialogFragment : DialogFragment() {
         queenAcceleratorRadioGroup = view.findViewById(R.id.tools_radiogroup_queen_accelerator)
         downloadModelsButton = view.findViewById(R.id.tools_button_download_models)
         downloadDecksButton = view.findViewById(R.id.tools_button_download_decks)
+        // BOURDON'S ADDITION: Liaison du nouveau bouton.
+        managePromptsButton = view.findViewById(R.id.tools_button_manage_prompts)
     }
 
     private fun setupForgeQueenSelector(view: View) {
@@ -157,6 +166,14 @@ class ToolsDialogFragment : DialogFragment() {
         downloadDecksButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.kikko.be/sagas"))
             startActivity(intent)
+            dismiss()
+        }
+    }
+
+    // BOURDON'S ADDITION: Nouvelle méthode pour configurer le bouton de gestion des prompts.
+    private fun setupPromptManagementButton() {
+        managePromptsButton.setOnClickListener {
+            listener?.onManagePromptsRequested()
             dismiss()
         }
     }

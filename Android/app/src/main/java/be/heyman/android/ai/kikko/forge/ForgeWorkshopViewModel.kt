@@ -1,5 +1,5 @@
-// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
 
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
 package be.heyman.android.ai.kikko.forge
 
 import android.app.Application
@@ -230,7 +230,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
             val accelerator = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
                 .getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
 
-            // BOURDON'S FIX: Correction de la logique. Le ViewModel délègue la création des tâches au Repository.
+            // BOURDON'S FIX: Le ViewModel délègue la création des tâches au Repository.
             val tasks = forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
 
             refreshAnalysisResults(grain.id, propertyName)
@@ -636,25 +636,40 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private fun extractValueFromResponse(rawResponse: String, propertyName: String): String {
-        return try {
-            val propertyJson = parseIntelligentJson<JsonObject>(rawResponse) ?: return ""
-            when (propertyName) {
-                "identification" -> {
-                    val name = propertyJson.get("specificName")?.asString ?: ""
-                    val deck = propertyJson.get("deckName")?.asString ?: ""
-                    if (name.isNotBlank() && deck.isNotBlank()) "$deck: $name" else ""
-                }
-                else -> {
-                    val valueElement = propertyJson.get(propertyName)
-                    if (valueElement != null) {
-                        if (valueElement.isJsonPrimitive) valueElement.asString else gson.toJson(valueElement)
-                    } else ""
+        // BOURDON'S FIX: La logique de fallback par Regex est maintenant ici.
+        try {
+            val propertyJson = parseIntelligentJson<JsonObject>(rawResponse)
+            if (propertyJson != null) {
+                return when (propertyName) {
+                    "identification" -> {
+                        val name = propertyJson.get("specificName")?.asString ?: ""
+                        val deck = propertyJson.get("deckName")?.asString ?: ""
+                        if (name.isNotBlank() && deck.isNotBlank()) "$deck: $name" else ""
+                    }
+                    else -> {
+                        val valueElement = propertyJson.get(propertyName)
+                        if (valueElement != null) {
+                            if (valueElement.isJsonPrimitive) valueElement.asString else gson.toJson(valueElement)
+                        } else ""
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Impossible d'extraire la valeur pour '$propertyName' de la réponse: $rawResponse")
-            ""
+            Log.w(TAG, "Le parsing JSON a échoué pour '$propertyName', tentative de fallback. Erreur: ${e.message}")
         }
+
+        // Fallback pour l'identification
+        if (propertyName == "identification") {
+            val name = """"specificName"\s*:\s*"(.*?)"""".toRegex().find(rawResponse)?.groups?.get(1)?.value
+            val deck = """"(deckName|DeckName)"\s*:\s*"(.*?)"""".toRegex(RegexOption.IGNORE_CASE).find(rawResponse)?.groups?.get(2)?.value
+            if (name != null && deck != null) {
+                Log.i(TAG, "[EXTRACT-REGEX] Fallback réussi pour identification: '$deck: $name'")
+                return "$deck: $name"
+            }
+        }
+
+        Log.w(TAG, "Impossible d'extraire la valeur pour '$propertyName' de la réponse: $rawResponse")
+        return ""
     }
 
 

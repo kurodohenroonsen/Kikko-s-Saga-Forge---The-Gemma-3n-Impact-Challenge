@@ -27,6 +27,7 @@ import be.heyman.android.ai.kikko.forge.ForgeRepository
 import be.heyman.android.ai.kikko.persistence.AnalysisResultDao
 import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
+import be.heyman.android.ai.kikko.prompt.PromptManager
 
 // BOURDON'S FIX: Suppression de l'annotation HiltAndroidApp.
 // @HiltAndroidApp
@@ -47,6 +48,9 @@ class KikkoApplication : Application(), Configuration.Provider {
     super.onCreate()
 
     writeLaunchInfo(context = this)
+
+    // BOURDON'S ADDITION: Initialisation critique du gestionnaire de prompts.
+    PromptManager.initialize(this)
 
     // BOURDON'S FIX: Initialisation des DAOs et Helpers pour s'assurer qu'ils sont prêts.
     // L'accès lazy ci-dessus garantit qu'ils ne sont créés qu'une fois.

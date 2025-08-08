@@ -1,0 +1,19 @@
+### Shortlist et Évaluation (Hors Vidéo)
+
+| Rang (Estimé) | Projet | Score Impact & Vision (/40) | Score Profondeur Technique (/30) | Total (Hors Vidéo /70) | Fiche Projet | Vidéo Démo |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | **3VA: The Revolution That Gives Back What Was Never Lost** | 40 | 28 | **68** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/3va) | [Vidéo](https://www.youtube.com/watch?v=AN9BYKK6pak) |
+| 2 | **Moransa: Hope in Code for Guinea-Bissau with Gemma 3n** | 39 | 28 | **67** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/moransa-hope-in-code-for-guinea-bissau-with-gemma) | [Vidéo](https://youtu.be/7hj7yxEJPs0?si=ea1T6zAxGPtHxEsx) |
+| 3 | **AI in Rural India: Digitizing Health Records for ASHA workers** | 39 | 27 | **66** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/ai-in-rural-india-digitizing-health-records-for-as) | [Vidéo](https://youtu.be/m6VapEXslz8) |
+| 4 | **Fully Private, On-Device Android AI Agent powered by Gemma3n** | 35 | 30 | **65** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/fully-local-android-ai-agent-using-gemma-3n) | [Vidéo](https://www.youtube.com/watch?v=CEuayAVZkrw) |
+| 5 | **Gemma-GR00T Lab - Democratizing Private On-Device AI** | 34 | 30 | **64** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/gemma-gr00k-lab-democratizing-private-on-device-ai) | [Vidéo](https://youtu.be/kB_AvraKymk) |
+| 6 | **Kikko's Saga Forge: A Verifiable & Evolvable Knowledge RPG** | 36 | 28 | **64** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/KikkoSagaForge) | [Vidéo](https://youtu.be/GKSE5RrzzYY) |
+| 7 | **ReadShift: Shifting Reading Frustration into Confidence** | 38 | 25 | **63** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/readshift-enabling-kids-with-dyslexia-to-read-with) | [Vidéo](https://youtu.be/etfviYWt140) |
+| 8 | **LeRepairBot: Multimodal Assistant to Help Repair Electronics** | 35 | 28 | **63** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/lerepairbot-multimodal-assistant-to-help-repair-el) | [Vidéo](https://youtu.be/NB89v6ZwTPQ?si=T8IZk4WMTAztNM5R) |
+| 9 | **ISABELLE: AI Assistant for Blind Users** | 37 | 26 | **63** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/isabelle-ai-assistant-for-blind-users) | [Vidéo](https://youtu.be/IzhDpOID4hI) |
+| 10 | **Mentis - A Privacy-First, Fine-Tuned Gemma 3n for Mental Health** | 36 | 27 | **63** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/mentis-a-privacy-first-fine-tuned-gemma-3n-for-men) | [Vidéo](https://youtu.be/oBCRgDEW37A) |
+| 11 | **Project Persona** | 34 | 28 | **62** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/project-persona) | [Vidéo](https://www.youtube.com/watch?v=iLximobmWNg) |
+| 12 | **Tese Community Brain: Offline-First Knowledge Access** | 38 | 24 | **62** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/gemma-3n-community-brain-offline-first-knowledge-a) | [Vidéo](https://youtu.be/8ZwkFchFS5k) |
+| 13 | **Echo: Your SOS, Amplified** | 37 | 25 | **62** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/echo-your-sos-amplified) | [Vidéo](https://youtu.be/Mr5W5KUm0pM) |
+| 14 | **Rapid Care** | 36 | 26 | **62** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/rapid-care) | [Vidéo](https://www.youtube.com/watch?v=pO57VgrE5hI) |
+| 15 | **Bubble - Stop Searching, Start Doing** | 33 | 28 | **61** | [Lien](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/bubble-stop-searching-start-doing) | [Vidéo](https://youtu.be/pWIBtbkfqjw) |

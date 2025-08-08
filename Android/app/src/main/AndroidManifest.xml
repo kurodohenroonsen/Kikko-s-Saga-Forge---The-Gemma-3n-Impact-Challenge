@@ -61,6 +61,9 @@
         <activity android:name=".pollen.ForgeLiveActivity" android:exported="false" android:theme="@style/Theme.KikkoSagaForge" />
         <activity android:name=".forge.ForgeWorkshopActivity" android:exported="false" android:label="Atelier de la Forge Royale" android:theme="@style/Theme.KikkoSagaForge" />
 
+        <!-- BOURDON'S ADDITION: Déclaration de la nouvelle PromptEditorActivity -->
+        <activity android:name=".prompt.PromptEditorActivity" android:exported="false" android:theme="@style/Theme.KikkoSagaForge" />
+
         <!-- BOURDON'S FIX: Ajout de windowSoftInputMode pour corriger le comportement du clavier. -->
         <activity
             android:name=".royal_audience.RoyalAudienceActivity"

@@ -141,6 +141,8 @@
     <string name="generic_disabled" translatable="false">Disabled</string>
     <string name="tools_button_download_more_queens" translatable="false">Download More Queens</string>
     <string name="tools_button_download_decks" translatable="false">Download Decks</string>
+    <string name="tools_prompt_management_title" translatable="false">Queen\'s Decrees (Prompts)</string>
+    <string name="tools_button_manage_prompts" translatable="false">Manage Queen\'s Decrees</string>
 
     <!-- Clash -->
     <string name="clash_title" translatable="false">CLASH</string>
@@ -286,12 +288,12 @@
     <string name="workshop_raw_pollen_title" translatable="false">Raw Pollen</string>
     <string name="workshop_deck_unknown" translatable="false">Deck: To be identified</string>
     <string name="workshop_no_grains_in_deck" translatable="false">No grains in this category.</string>
-    <!-- BOURDON'S FIX: Strings for Intelligent Forge Button -->
     <string name="workshop_competition_in_progress" translatable="false">Competition in Progress...</string>
     <string name="workshop_relaunch_competition" translatable="false">Relaunch Competition 🔄</string>
     <string name="dialog_relaunch_title" translatable="false">Relaunch Competition?</string>
     <string name="dialog_relaunch_message" translatable="false">This will delete all current analysis results for this property and create a new set of tasks. Are you sure?</string>
     <string name="dialog_relaunch_confirm" translatable="false">Yes, Relaunch</string>
+    <string name="workshop_button_launch_judgment" translatable="false">Launch Final Judgment ⚖️</string>
 
     <!-- RoyalAudience -->
     <string name="audience_title_generic" translatable="false">Open Audience</string>
@@ -361,4 +363,32 @@
     <string name="notification_forge_awakens" translatable="false">The Forge awakens...</string>
     <string name="notification_queen_identifying" translatable="false">Queen \'%1$s\' is identifying the pollen...</string>
     <string name="notification_queen_identifying_streaming" translatable="false">The Queen is identifying... (%1$d chars generated)</string>
+
+    <!-- BOURDON'S ADDITION: Prompt Editor -->
+    <string name="prompt_editor_title" translatable="false">Queen\'s Prompt Armory</string>
+    <string name="menu_import_prompts" translatable="false">Import</string>
+    <string name="menu_export_prompts" translatable="false">Export</string>
+    <string name="menu_reset_prompts" translatable="false">Reset to Defaults</string>
+    <string name="prompt_selector_label" translatable="false">Select Prompt to Edit:</string>
+    <string name="prompt_editor_hint" translatable="false">Edit the content of the selected prompt here...</string>
+    <string name="button_save_prompts" translatable="false">Save Changes</string>
+    <string name="dialog_reset_prompts_title" translatable="false">Reset All Prompts?</string>
+    <string name="dialog_reset_prompts_message" translatable="false">This will discard all your custom modifications and restore the original prompts that came with the app. This action is irreversible.</string>
+    <string name="dialog_reset_confirm" translatable="false">Yes, Reset</string>
+    <string name="toast_prompts_saved" translatable="false">Prompts saved successfully.</string>
+    <string name="toast_prompts_restored" translatable="false">Prompts restored to default.</string>
+    <string name="toast_import_success" translatable="false">Prompts imported successfully.</string>
+    <string name="toast_import_failed" translatable="false">Failed to import prompts. The file might be invalid.</string>
+    <string name="toast_export_failed" translatable="false">Failed to export prompts.</string>
+    <string name="share_prompts_title" translatable="false">Share Kikko Prompts</string>
+
+    <!-- BOURDON'S ADDITION: Judgment Tribunal -->
+    <string name="judgment_dialog_title" translatable="false">Final Judgment</string>
+    <string name="judgment_section_title_deliberation" translatable="false">Arbiter\'s Deliberation</string>
+    <string name="judgment_section_title_decree" translatable="false">Arbiter\'s Decree (Prompt)</string>
+    <string name="judgment_section_title_evidence" translatable="false">Evidence Presented</string>
+    <string name="judgment_button_override" translatable="false">Override &amp; Choose Manually</string>
+    <string name="judgment_button_confirm" translatable="false">Confirm Arbiter\'s Verdict</string>
+    <string name="workshop_launching_judgment" translatable="false">Convening the Arbiter\'s Court for \'%1$s\'...</string>
+
 </resources>

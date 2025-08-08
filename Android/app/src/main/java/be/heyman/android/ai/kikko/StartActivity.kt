@@ -31,6 +31,7 @@ import be.heyman.android.ai.kikko.model.PollenStatus
 import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
 import be.heyman.android.ai.kikko.pollen.ForgeLiveActivity
+import be.heyman.android.ai.kikko.prompt.PromptEditorActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -94,15 +95,15 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
             }
         }
     }
-/*
-    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-        if (isGranted) {
-            modelToTest?.let { testVoskModel(it) }
-        } else {
-            Toast.makeText(this, R.string.mic_permission_denied, Toast.LENGTH_SHORT).show()
+    /*
+        private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                modelToTest?.let { testVoskModel(it) }
+            } else {
+                Toast.makeText(this, R.string.mic_permission_denied, Toast.LENGTH_SHORT).show()
+            }
         }
-    }
-*/
+    */
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -400,6 +401,10 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
 
     override fun onAddModelRequested() {
         addModelLauncher.launch("*/*")
+    }
+
+    override fun onManagePromptsRequested() {
+        startActivity(Intent(this, PromptEditorActivity::class.java))
     }
 
     private suspend fun handleVoskModelImport(uri: Uri) = withContext(Dispatchers.IO) {

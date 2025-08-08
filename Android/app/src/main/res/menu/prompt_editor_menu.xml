@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_import_prompts"
+        android:title="@string/menu_import_prompts"
+        android:icon="@android:drawable/ic_menu_save"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_export_prompts"
+        android:title="@string/menu_export_prompts"
+        android:icon="@android:drawable/ic_menu_upload"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_reset_prompts"
+        android:title="@string/menu_reset_prompts"
+        android:icon="@android:drawable/ic_menu_revert"
+        app:showAsAction="never" />
+
+</menu>

@@ -13,7 +13,6 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"/>
 
-    <!-- BOURDON'S REFORGE: L'en-tête est maintenant un conteneur cliquable -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/property_refinement_header"
         android:layout_width="match_parent"
@@ -57,7 +56,6 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- BOURDON'S REFORGE: Le contenu est maintenant dans un conteneur séparé pour être masqué -->
     <LinearLayout
         android:id="@+id/property_refinement_content"
         android:layout_width="match_parent"
@@ -66,12 +64,32 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <Button
-            android:id="@+id/property_refinement_launch_button"
+        <!-- BOURDON'S REFACTOR: Les boutons d'action sont maintenant dans un conteneur dédié -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            tools:text="Lancer la Compétition des Scribes ⚔️"/>
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/property_refinement_launch_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                tools:text="Relancer la Compétition 🔄"/>
+
+            <Button
+                android:id="@+id/property_refinement_launch_judgment_button"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/workshop_button_launch_judgment"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+        </LinearLayout>
+
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/property_refinement_summary_card"

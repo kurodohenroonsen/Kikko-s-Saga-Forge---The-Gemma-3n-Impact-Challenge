@@ -1,27 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.Gallery" parent="android:Theme.Material.Light.NoActionBar" />
-    <style name="Theme.Gallery.SplashScreen" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#2A2A34</item>
-        <item name="postSplashScreenTheme">@style/Theme.Gallery</item>
-    </style>
-    <style name="Theme.Gallery.OssLicenses" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
-    </style>
-    <style name="Theme.Kikko.FullScreenDialog" parent="Theme.Material3.DayNight.Dialog">
-        <item name="android:windowIsFloating">false</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowTitleStyle">@null</item>
-        <item name="android:backgroundDimEnabled">true</item>
-    </style>
 
+    <!-- Thème principal de l'application. Hérite de Material 3, sans ActionBar par défaut. -->
     <style name="Theme.KikkoSagaForge" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- BOURDON'S FIX: Rendre la barre de statut transparente et les icônes claires -->
+        <!-- Rendre la barre de statut transparente pour une immersion totale -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
 
-        <!-- Palette de couleurs primaires -->
+        <!-- Palette de couleurs de la Ruche -->
         <item name="colorPrimary">@color/kikko_honey_yellow</item>
         <item name="colorPrimaryContainer">@color/kikko_leaf_green</item>
         <item name="colorOnPrimaryContainer">@color/kikko_bark_brown</item>
@@ -34,9 +20,20 @@
         <item name="colorOnSurface">@color/kikko_bark_brown</item>
         <item name="colorError">@color/kikko_error_red</item>
 
+        <!-- Thème personnalisé pour les boîtes de dialogue d'alerte -->
         <item name="materialAlertDialogTheme">@style/KikkoAlertDialogTheme</item>
     </style>
 
+    <!-- Style pour les boîtes de dialogue plein écran (utilisé par CardDetails, etc.) -->
+    <style name="Theme.Kikko.FullScreenDialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowTitleStyle">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <!-- Thème spécifique pour les boîtes de dialogue MaterialAlertDialog -->
     <style name="KikkoAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorPrimary">@color/kikko_honey_yellow</item>
         <item name="colorSecondary">@color/kikko_magic_cyan</item>
@@ -48,8 +45,10 @@
         <item name="shapeAppearance">@style/KikkoDialogShape</item>
     </style>
 
+    <!-- Forme personnalisée pour les coins arrondis des dialogues -->
     <style name="KikkoDialogShape" parent="ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">16dp</item>
     </style>
+
 </resources>

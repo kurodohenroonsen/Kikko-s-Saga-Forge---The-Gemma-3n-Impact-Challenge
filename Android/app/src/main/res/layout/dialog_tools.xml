@@ -228,7 +228,6 @@
                     app:icon="@android:drawable/ic_menu_upload"/>
             </LinearLayout>
 
-            <!-- BOURDON'S ADDITION: Le nouveau bouton pour télécharger des decks -->
             <Button
                 android:id="@+id/tools_button_download_decks"
                 style="?attr/materialButtonOutlinedStyle"
@@ -237,6 +236,29 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/tools_button_download_decks"
                 app:icon="@android:drawable/ic_menu_gallery" />
+
+            <!-- BOURDON'S ADDITION: Section pour la gestion des prompts -->
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tools_prompt_management_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:layout_marginBottom="8dp"/>
+
+            <Button
+                android:id="@+id/tools_button_manage_prompts"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/tools_button_manage_prompts"
+                app:icon="@android:drawable/ic_menu_edit" />
+
 
             <com.google.android.material.divider.MaterialDivider
                 android:layout_width="match_parent"
