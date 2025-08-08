@@ -87,8 +87,7 @@ Dashboard of **grains** and their **status**:
 * **RAW** → **IDENTIFYING** → **PENDING\_DESCRIPTION** → **PENDING\_STATS** → **PENDING\_QUIZ** → **PENDING\_TRANSLATION** → **HONEY (card)**
 * **ERROR** if a step failed (you can retry).
 
-> **IMG**
-> `![Grains with status chips](illustrations/userguide/forge_workshop.png "PROMPT: list with colored status chips (RAW, IDENTIFYING, PENDING_DESCRIPTION, PENDING_STATS, PENDING_QUIZ, PENDING_TRANSLATION, HONEY, ERROR); one item expanded with actions: retry, open provenance")`
+<img src="user_04.png"  width="50%">
 
 ---
 
@@ -96,11 +95,9 @@ Dashboard of **grains** and their **status**:
 
 **Kikko (Decks)** opens the gallery by deck (**Food**, **Plant**, **Insect**, **Bird**). Tap a card for details: image, description, attributes, tags, and actions (**Quiz**, **Translate**, **Delete**).
 
-> **IMG**
-> `![Decks grid](illustrations/userguide/decks_grid.png "PROMPT: grid of collectible cards categorized by deck (Food, Plant, Insect, Bird); clean material design; honey-gold highlights; no personal data")`
+<img src="user_05.png"  width="50%">
 
-> **IMG**
-> `![Card details](illustrations/userguide/card_details.png "PROMPT: full-screen card detail view with big image, name, description, chips, and actions (Quiz, Translate, Delete); cinematic honey-gold UI")`
+<img src="user_06.png"  width="50%">
 
 ---
 
@@ -113,11 +110,9 @@ Chat with the **Queen** (on‑device LLM):
 * Optional **voice**: import a **Vosk** model for STT; use TTS for spoken replies
 * You can **attach an image** for contextual grounding
 
-> **IMG**
-> `![AI chat screen](illustrations/userguide/royal_audience.png "PROMPT: chat screen with alternating bubbles (user/queen), top appbar 'Royal Audience', buttons 'Model' and 'Settings', a mic button state; a message with an attached photo thumbnail; elegant honey-gold theme")`
+<img src="user_07.png"  width="50%">
 
-> **IMG**
-> `![Model picker & Settings](illustrations/userguide/queen_model_settings.png "PROMPT: two modals: 1) list of local .task models with radio selection; 2) sliders for temperature and top‑K with helper labels; material components, honey-gold accents")`
+<img src="user_08.png"  width="50%">
 
 ---
 
