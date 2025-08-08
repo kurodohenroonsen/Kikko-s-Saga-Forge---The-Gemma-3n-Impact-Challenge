@@ -18,10 +18,9 @@
 9. [Royal Audience (AI Chat)](#royal-audience-ai-chat)
 10. [Prompt Editor](#prompt-editor)
 11. [Clash Arena (Duels)](#clash-arena-duels)
-12. [Review Quiz](#review-quiz)
-13. [Import/Export Saga (.kikkoSaga)](#importexport-saga-kikkosaga)
-14. [Local AI Models](#local-ai-models)
-15. [Quick Troubleshooting](#quick-troubleshooting)
+12. [Import/Export Saga (.kikkoSaga)](#importexport-saga-kikkosaga)
+13. [Local AI Models](#local-ai-models)
+14. [Quick Troubleshooting](#quick-troubleshooting)
 
 ---
 
@@ -36,9 +35,6 @@
 * Download the APK from the repository’s README link.
 * Allow installs from your browser/file manager if prompted.
 * Open the APK to install, then launch the app.
-
-> **IMG**
-> `![Android install screen](illustrations/userguide/install_apk.png "PROMPT: smartphone screenshot-like, Android package install dialog for 'Kikko’s Saga Forge', neutral lighting, no personal data visible")`
 
 ---
 
@@ -120,8 +116,6 @@ Chat with the **Queen** (on‑device LLM):
 
 Browse prompt keys, **edit**, **save**, **import/export** a JSON, or **restore defaults**.
 
-> **IMG**
-> `![Prompt editor](illustrations/userguide/prompt_editor.png "PROMPT: screen with toolbar menu (import/export/reset), a dropdown of prompt keys, a large multiline text area, and a Save button; clean honey-gold UI")`
 
 ---
 
@@ -140,22 +134,11 @@ Pick a **mode** (Solo / P2P), choose your **champions** (cards by deck), then st
 
 ---
 
-## Review Quiz
-
-Every card can spawn a **Quiz** (multiple-choice). Submit answers, get **instant feedback**, then see your **final score**.
-
-> **IMG**
-> `![Quiz screen](illustrations/userguide/quiz.png "PROMPT: quiz screen with progress 'Question 1/5', a material card showing the question, 4 radio answers, Submit then Next; feedback panel turns green/red")`
-
----
-
 ## Import/Export Saga (.kikkoSaga)
 
 * **Export**: creates a `.kikkoSaga` archive (cards + images + analyses) and opens the Android **share sheet**.
 * **Import**: pick a `.kikkoSaga`; **new** cards are **grafted** without name duplicates.
 
-> **IMG**
-> `![Import/Export flow](illustrations/userguide/saga_flow.png "PROMPT: two-step storyboard: 1) export creating KikkoSaga_YYYYMMDD.kikkoSaga and Android share sheet; 2) import picker then success toast; neutral device UI")`
 
 ---
 
@@ -165,27 +148,13 @@ Every card can spawn a **Quiz** (multiple-choice). Submit answers, get **instant
 * **Remove**: delete from the local list.
 * **Vosk (voice)**: import a **.zip** speech model; it installs into the local folder and becomes available in **Royal Audience**.
 
-> **IMG**
-> `![Local models list](illustrations/userguide/local_models.png "PROMPT: recycler list of local AI models (.task) with filename and per-row trash icon; honey-gold accents")`
 
 ---
 
 ## Quick Troubleshooting
 
 * **Welcome video pauses when app is backgrounded**: expected (Android pauses playback on activity pause).
-* **No speech model**: import a **Vosk** model before enabling dictation.
 * **ERROR status in Workshop**: retry the failed step or delete the grain.
 
-> **IMG**
-> `![Help & tips](illustrations/userguide/help_tips.png "PROMPT: small tips panel with 3 bullets and icons (video pause, mic/model, error retry); clean honey-gold infographics")`
 
 ---
-
-## Notes for Contributors
-
-* Place screenshots/illustrations under `illustrations/userguide/`.
-* The **title** of each image (the part in quotes after the file path) holds a **concise prompt** to regenerate a consistent visual.
-
----
-
-*End of guide.*
