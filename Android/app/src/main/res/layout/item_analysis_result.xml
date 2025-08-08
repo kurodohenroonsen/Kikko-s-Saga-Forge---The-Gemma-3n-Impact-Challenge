@@ -15,7 +15,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- BOURDON'S REFORGE: Cet en-tête est maintenant la zone cliquable pour déplier -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/analysis_header_container"
             android:layout_width="match_parent"
@@ -28,7 +27,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="@color/black"
-                android:textSize="14dp"
+                android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -47,7 +46,6 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- BOURDON'S REFORGE: Ce conteneur sera caché/affiché -->
         <LinearLayout
             android:id="@+id/analysis_details_container"
             android:layout_width="match_parent"
@@ -84,6 +82,61 @@
                 android:visibility="gone"
                 tools:visibility="visible"
                 tools:text="{ 'description': 'A dandelion is...', 'stats': {...} }"/>
+
+            <!-- BOURDON'S REFORGE: Ajout de la section des métriques de performance -->
+            <com.google.android.material.divider.MaterialDivider
+                android:id="@+id/metrics_divider_top"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/analysis_metrics_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/analysis_metric_ttft"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableStartCompat="@android:drawable/ic_menu_recent_history"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Reflex: 250ms"/>
+
+                <TextView
+                    android:id="@+id/analysis_metric_total_time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableStartCompat="@android:drawable/ic_menu_my_calendar"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Total: 1.2s"/>
+
+                <TextView
+                    android:id="@+id/analysis_metric_tps"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Speed: 120 t/s"/>
+            </LinearLayout>
 
             <HorizontalScrollView
                 android:layout_width="match_parent"

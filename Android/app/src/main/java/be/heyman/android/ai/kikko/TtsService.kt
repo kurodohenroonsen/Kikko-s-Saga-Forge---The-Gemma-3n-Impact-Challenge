@@ -17,7 +17,6 @@ object TtsService : TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var isTtsInitialized = false
 
-    // BOURDON'S V4 REFACTOR: Exposing the speaking state via a StateFlow.
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking = _isSpeaking.asStateFlow()
 
@@ -65,8 +64,11 @@ object TtsService : TextToSpeech.OnInitListener {
     }
 
     fun speak(text: String, locale: Locale, onDone: (() -> Unit)? = null) {
+        // BOURDON'S CRITICAL FIX: Nettoyage du texte avant de le parler.
+        val cleanedText = text.replace("*", "")
+
         val utteranceId = "KikkoDirectSpeak-${UUID.randomUUID()}"
-        val request = SpeakRequest(utteranceId, text, locale, onDone)
+        val request = SpeakRequest(utteranceId, cleanedText, locale, onDone)
         directSpeakQueue.add(request)
 
         if (isTtsInitialized) {

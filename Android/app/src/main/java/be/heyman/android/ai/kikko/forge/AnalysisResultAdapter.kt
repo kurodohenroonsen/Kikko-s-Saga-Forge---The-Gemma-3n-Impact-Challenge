@@ -4,7 +4,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -14,8 +16,9 @@ import be.heyman.android.ai.kikko.model.AnalysisStatus
 import be.heyman.android.ai.kikko.model.ModelConfiguration
 import com.google.android.material.chip.Chip
 import com.google.gson.Gson
+import java.util.Locale
 
-// BOURDON'S FIX: La classe DiffCallback est maintenant définie AVANT l'adaptateur qui l'utilise.
+// BOURDON'S REFORGE: Le DiffCallback est mis à jour pour vérifier les nouvelles métriques.
 class AnalysisResultDiffCallback : DiffUtil.ItemCallback<AnalysisResult>() {
     override fun areItemsTheSame(oldItem: AnalysisResult, newItem: AnalysisResult): Boolean {
         return oldItem.id == newItem.id
@@ -25,7 +28,8 @@ class AnalysisResultDiffCallback : DiffUtil.ItemCallback<AnalysisResult>() {
         return oldItem.status == newItem.status &&
                 oldItem.rawResponse == newItem.rawResponse &&
                 oldItem.streamingResponse == newItem.streamingResponse &&
-                oldItem.errorMessage == newItem.errorMessage
+                oldItem.errorMessage == newItem.errorMessage &&
+                oldItem.totalTimeMs == newItem.totalTimeMs // Vérifier une métrique suffit.
     }
 }
 
@@ -74,6 +78,11 @@ class AnalysisResultAdapter(
         val headerContainer: View = view.findViewById(R.id.analysis_header_container)
         val detailsContainer: View = view.findViewById(R.id.analysis_details_container)
 
+        // BOURDON'S REFORGE: Références aux nouvelles vues de métriques.
+        val metricsContainer: LinearLayout = view.findViewById(R.id.analysis_metrics_container)
+        val ttftMetric: TextView = view.findViewById(R.id.analysis_metric_ttft)
+        val totalTimeMetric: TextView = view.findViewById(R.id.analysis_metric_total_time)
+        val tpsMetric: TextView = view.findViewById(R.id.analysis_metric_tps)
 
         fun bind(task: AnalysisResult, isManuallyExpanded: Boolean, onHeaderClick: () -> Unit) {
             analysisStatusChip.text = task.status.name
@@ -87,11 +96,7 @@ class AnalysisResultAdapter(
             }
             analysisModelConfig.text = title
 
-            if (task.status == AnalysisStatus.RUNNING || isManuallyExpanded) {
-                detailsContainer.visibility = View.VISIBLE
-            } else {
-                detailsContainer.visibility = View.GONE
-            }
+            detailsContainer.isVisible = task.status == AnalysisStatus.RUNNING || isManuallyExpanded
             headerContainer.setOnClickListener { onHeaderClick() }
 
             val showResponseText = when (task.status) {
@@ -100,27 +105,27 @@ class AnalysisResultAdapter(
                 else -> null
             }
 
-            if (!showResponseText.isNullOrEmpty()) {
-                analysisRawResponse.visibility = View.VISIBLE
-                analysisRawResponse.text = showResponseText
-            } else {
-                analysisRawResponse.visibility = View.GONE
-            }
+            analysisRawResponse.isVisible = !showResponseText.isNullOrEmpty()
+            analysisRawResponse.text = showResponseText
 
-            analysisErrorMessage.visibility = if (task.status == AnalysisStatus.FAILED && task.errorMessage != null) {
-                analysisErrorMessage.text = task.errorMessage
-                View.VISIBLE
+            analysisErrorMessage.isVisible = task.status == AnalysisStatus.FAILED && task.errorMessage != null
+            analysisErrorMessage.text = task.errorMessage
+
+            // BOURDON'S REFORGE: Logique d'affichage des métriques.
+            if (task.status == AnalysisStatus.COMPLETED && task.totalTimeMs != null) {
+                metricsContainer.isVisible = true
+                ttftMetric.text = task.ttftMs?.let { "Reflex: ${it}ms" } ?: "Reflex: N/A"
+                totalTimeMetric.text = "Total: %.2fs".format(Locale.US, task.totalTimeMs!! / 1000.0)
+                tpsMetric.text = task.tokensPerSecond?.let { "Speed: %.1f t/s".format(Locale.US, it) } ?: "Speed: N/A"
             } else {
-                View.GONE
+                metricsContainer.isVisible = false
             }
 
             when (task.status) {
                 AnalysisStatus.PENDING, AnalysisStatus.PAUSED, AnalysisStatus.CANCELLED -> showActions(run = true)
                 AnalysisStatus.RUNNING -> showActions(pause = true, cancel = true)
                 AnalysisStatus.FAILED -> showActions(viewError = true, retry = true)
-                AnalysisStatus.COMPLETED -> {
-                    showActions(validate = true)
-                }
+                AnalysisStatus.COMPLETED -> showActions(validate = true)
             }
 
             analysisRunButton.setOnClickListener { onRun(task) }

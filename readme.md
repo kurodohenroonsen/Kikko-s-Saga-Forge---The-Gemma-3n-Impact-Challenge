@@ -13,6 +13,7 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
 </p>
 
 # Kikko's Saga Forge: A Verifiable & Evolvable Knowledge RPG
+## This is a gift to humanity
 
 **"Forge your verifiable saga with an on-device AI. A new game to combat digital amnesia and restore trust in AI."**
 

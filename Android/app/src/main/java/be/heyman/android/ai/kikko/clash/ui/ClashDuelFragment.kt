@@ -206,13 +206,14 @@ class ClashDuelFragment : Fragment() {
         if (winnerView != null && loserView != null) {
             winnerView.bringToFront()
 
+            // BOURDON'S FIX: Remplacement de "cardElevation" par la propriété universelle "elevation".
             val winnerScaleX = ObjectAnimator.ofFloat(winnerView, "scaleX", winnerScale)
             val winnerScaleY = ObjectAnimator.ofFloat(winnerView, "scaleY", winnerScale)
-            val winnerElevationAnim = ObjectAnimator.ofFloat(winnerView, "cardElevation", winnerElevation)
+            val winnerElevationAnim = ObjectAnimator.ofFloat(winnerView, "elevation", winnerElevation)
 
             val loserScaleX = ObjectAnimator.ofFloat(loserView, "scaleX", loserScale)
             val loserScaleY = ObjectAnimator.ofFloat(loserView, "scaleY", loserScale)
-            val loserElevationAnim = ObjectAnimator.ofFloat(loserView, "cardElevation", loserElevation)
+            val loserElevationAnim = ObjectAnimator.ofFloat(loserView, "elevation", loserElevation)
 
             val animatorSet = AnimatorSet().apply {
                 playTogether(winnerScaleX, winnerScaleY, winnerElevationAnim, loserScaleX, loserScaleY, loserElevationAnim)

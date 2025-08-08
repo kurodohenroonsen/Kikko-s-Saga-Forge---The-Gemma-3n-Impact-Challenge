@@ -390,5 +390,6 @@
     <string name="judgment_button_override" translatable="false">Override &amp; Choose Manually</string>
     <string name="judgment_button_confirm" translatable="false">Confirm Arbiter\'s Verdict</string>
     <string name="workshop_launching_judgment" translatable="false">Convening the Arbiter\'s Court for \'%1$s\'...</string>
+    <string name="judgment_warning_in_progress" translatable="false">Warning: %1$d of %2$d Queens have finished. Your judgment will be based on partial evidence.</string>
 
 </resources>

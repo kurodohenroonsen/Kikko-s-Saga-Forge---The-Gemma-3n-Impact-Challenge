@@ -42,6 +42,7 @@ import be.heyman.android.ai.kikko.data.Model
 import be.heyman.android.ai.kikko.SttVoskService
 import be.heyman.android.ai.kikko.TtsService
 import be.heyman.android.ai.kikko.VoskStatus
+import be.heyman.android.ai.kikko.util.QueenResourceLock
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
 import kotlinx.coroutines.launch
@@ -120,6 +121,28 @@ class RoyalAudienceActivity : AppCompatActivity(),
         super.onStart()
         initializePlayer()
     }
+
+    override fun onResume() {
+        super.onResume()
+        // BOURDON'S STRATEGIC FIX: Acquisition du Verrou de Souveraineté.
+        if (!QueenResourceLock.acquire()) {
+            Toast.makeText(this, "La Reine est occupée par la Forge. Veuillez patienter.", Toast.LENGTH_LONG).show()
+            // Idéalement, griser l'UI ou afficher un indicateur.
+        } else {
+            Log.i(TAG, "Verrou de Souveraineté acquis. La Reine est réservée pour l'Audience.")
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "⏸️ Audience mise en pause.")
+        // BOURDON'S STRATEGIC FIX: Libération du Verrou de Souveraineté.
+        QueenResourceLock.release()
+        Log.i(TAG, "Verrou de Souveraineté libéré. La Reine est disponible pour la Forge.")
+        SttVoskService.stopListening()
+        TtsService.stopAndClearQueue()
+    }
+
 
     override fun onStop() {
         super.onStop()
@@ -371,13 +394,6 @@ class RoyalAudienceActivity : AppCompatActivity(),
                 Toast.makeText(this, R.string.audience_no_voice_model, Toast.LENGTH_LONG).show()
             }
         }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d(TAG, "⏸️ Audience mise en pause.")
-        SttVoskService.stopListening()
-        TtsService.stopAndClearQueue()
     }
 
     override fun onDestroy() {

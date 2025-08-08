@@ -29,6 +29,7 @@ import be.heyman.android.ai.kikko.model.SwarmAnalysisResult
 import be.heyman.android.ai.kikko.model.TranslatedContent
 import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
+import be.heyman.android.ai.kikko.util.QueenResourceLock
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +79,12 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
     }
 
     override suspend fun doWork(): Result {
+        // BOURDON'S STRATEGIC FIX: Implémentation du Verrou de Souveraineté.
+        if (QueenResourceLock.isLocked()) {
+            Log.w(TAG, "La Reine est occupée par une Audience (Verrou actif). Le Worker va retenter plus tard.")
+            return Result.retry()
+        }
+
         Log.i(TAG, "WORKER MONOLITHIQUE DÉMARRÉ.")
         setForeground(createForegroundInfo("La Forge s'éveille..."))
 
@@ -139,7 +146,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
         try {
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = config.modelName.contains("gemma-3n", ignoreCase = true))
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = config.modelName.contains("gemma-3n", ignoreCase = true))
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = true)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Identification): $initError")
@@ -170,7 +177,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour la description.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Description): $initError")
@@ -189,7 +196,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour les stats.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Stats): $initError")
@@ -226,7 +233,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour le quiz.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Quiz): $initError")
@@ -246,7 +253,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour la traduction.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Traduction): $initError")

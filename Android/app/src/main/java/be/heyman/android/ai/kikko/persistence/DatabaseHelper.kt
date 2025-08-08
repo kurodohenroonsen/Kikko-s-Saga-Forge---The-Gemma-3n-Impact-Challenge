@@ -9,8 +9,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "kikko.db"
-        // BOURDON'S REFORGE: Version incrémentée à 7 pour refléter le nouveau schéma de carte.
-        private const val DATABASE_VERSION = 7 // BOURDON'S FIX: Incrémentation de la version
+        // BOURDON'S REFORGE: Version incrémentée à 8 pour ajouter les métriques de performance.
+        private const val DATABASE_VERSION = 8
 
         // --- Table "knowledge_cards" Definition ---
         const val TABLE_CARDS = "knowledge_cards"
@@ -24,10 +24,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COLUMN_CARD_STATS_JSON = "stats"
         const val COLUMN_CARD_QUIZ_JSON = "quiz"
         const val COLUMN_CARD_TRANSLATIONS_JSON = "translations"
-        // BOURDON'S REFORGE: Ajout des nouveaux champs pour les decks biologiques.
         const val COLUMN_CARD_SCIENTIFIC_NAME = "scientificName"
         const val COLUMN_CARD_VERNACULAR_NAME = "vernacularName"
-        // BOURDON'S FIX: NOUVEAUX CHAMPS ALLERGENS ET INGREDIENTS
         const val COLUMN_CARD_ALLERGENS_JSON = "allergens"
         const val COLUMN_CARD_INGREDIENTS_JSON = "ingredients"
 
@@ -40,14 +38,12 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_CARD_IMAGE_PATH TEXT, " +
                     "$COLUMN_CARD_CONFIDENCE REAL, " +
                     "$COLUMN_CARD_DESCRIPTION TEXT, " +
-                    // BOURDON'S REFORGE: Ajout des nouvelles colonnes au schéma.
                     "$COLUMN_CARD_SCIENTIFIC_NAME TEXT, " +
                     "$COLUMN_CARD_VERNACULAR_NAME TEXT, " +
                     "$COLUMN_CARD_REASONING_JSON TEXT, " +
                     "$COLUMN_CARD_STATS_JSON TEXT, " +
                     "$COLUMN_CARD_QUIZ_JSON TEXT, " +
                     "$COLUMN_CARD_TRANSLATIONS_JSON TEXT, " +
-                    // BOURDON'S FIX: Ajout des nouvelles colonnes à la clause CREATE TABLE.
                     "$COLUMN_CARD_ALLERGENS_JSON TEXT, " +
                     "$COLUMN_CARD_INGREDIENTS_JSON TEXT);"
 
@@ -72,7 +68,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_POLLEN_FORGED_CARD_ID INTEGER, " +
                     "FOREIGN KEY($COLUMN_POLLEN_FORGED_CARD_ID) REFERENCES $TABLE_CARDS($COLUMN_CARD_ID));"
 
-        // --- Table "analysis_results" Definition (inchangée) ---
+        // --- Table "analysis_results" Definition ---
         const val TABLE_ANALYSIS_RESULTS = "analysis_results"
         const val COLUMN_AR_ID = "id"
         const val COLUMN_AR_POLLEN_ID = "pollen_grain_id"
@@ -82,6 +78,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COLUMN_AR_STATUS = "status"
         const val COLUMN_AR_TIMESTAMP = "timestamp"
         const val COLUMN_AR_ERROR_MESSAGE = "error_message"
+        // BOURDON'S REFORGE: Ajout des nouvelles colonnes pour les métriques de performance.
+        const val COLUMN_AR_TTFT_MS = "ttft_ms"
+        const val COLUMN_AR_TOTAL_TIME_MS = "total_time_ms"
+        const val COLUMN_AR_TOKENS_PER_SEC = "tokens_per_second"
+
 
         private const val TABLE_ANALYSIS_RESULTS_CREATE =
             "CREATE TABLE $TABLE_ANALYSIS_RESULTS (" +
@@ -93,6 +94,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_AR_STATUS TEXT NOT NULL, " +
                     "$COLUMN_AR_TIMESTAMP INTEGER NOT NULL, " +
                     "$COLUMN_AR_ERROR_MESSAGE TEXT, " +
+                    // BOURDON'S REFORGE: Ajout des nouvelles colonnes au schéma de création.
+                    "$COLUMN_AR_TTFT_MS INTEGER, " +
+                    "$COLUMN_AR_TOTAL_TIME_MS INTEGER, " +
+                    "$COLUMN_AR_TOKENS_PER_SEC REAL, " +
                     "FOREIGN KEY($COLUMN_AR_POLLEN_ID) REFERENCES $TABLE_POLLEN_GRAINS($COLUMN_POLLEN_ID) ON DELETE CASCADE);"
 
 

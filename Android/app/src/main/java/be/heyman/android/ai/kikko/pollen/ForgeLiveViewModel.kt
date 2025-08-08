@@ -17,7 +17,10 @@ import be.heyman.android.ai.kikko.ToolsDialogFragment
 import be.heyman.android.ai.kikko.model.PollenGrain as DbPollenGrain
 import be.heyman.android.ai.kikko.model.PollenStatus
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
-import be.heyman.android.ai.kikko.worker.IdentificationWorker
+// BOURDON'S FIX: La référence à l'ancien IdentificationWorker est supprimée.
+// import be.heyman.android.ai.kikko.worker.IdentificationWorker
+// BOURDON'S FIX: La nouvelle référence pointe vers le worker unifié.
+import be.heyman.android.ai.kikko.worker.ForgeWorker
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,19 +35,17 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 
-// BOURDON'S REFACTOR: Simplification drastique de la machine à états.
 enum class HarvestStep {
-    IDLE,                      // L'activité vient de démarrer.
-    BOURDON_INTRO,             // Le Bourdon parle pour accueillir.
-    USER_CAPTURING_POLLEN,     // La caméra est active pour la capture.
-    AWAITING_FINAL_CHOICE,     // L'utilisateur a terminé la capture et doit choisir.
-    SAVING,                    // Sauvegarde en cours.
-    SAVED                      // Sauvegarde terminée, en attente de sortie.
+    IDLE,
+    BOURDON_INTRO,
+    USER_CAPTURING_POLLEN,
+    AWAITING_FINAL_CHOICE,
+    SAVING,
+    SAVED
 }
 
 data class ForgeLiveUiState(
     val currentStep: HarvestStep = HarvestStep.IDLE,
-    // BOURDON'S REFACTOR: userIntent est maintenant obsolète dans ce flux, mais conservé pour la sauvegarde.
     val userIntent: String = "",
     val capturedPollen: List<PollenCapture> = emptyList(),
     val bourdonMessage: String? = null,
@@ -53,7 +54,6 @@ data class ForgeLiveUiState(
 
 class ForgeLiveViewModel(application: Application) : AndroidViewModel(application) {
 
-    // BOURDON'S LOGGING: TAG pour le débogage de ce ViewModel.
     private val TAG = "ForgeLiveViewModel"
 
     private val _uiState = MutableStateFlow(ForgeLiveUiState())
@@ -73,7 +73,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.update {
             it.copy(
                 currentStep = HarvestStep.BOURDON_INTRO,
-                // BOURDON'S REFACTOR: Nouveau message d'accueil direct.
                 bourdonMessage = getApplication<Application>().getString(R.string.bourdon_welcome_capture)
             )
         }
@@ -82,7 +81,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
     fun onBourdonFinishedSpeaking() {
         _uiState.update {
             val nextStep = when (it.currentStep) {
-                // BOURDON'S REFACTOR: Après l'intro, on passe directement à la capture.
                 HarvestStep.BOURDON_INTRO -> HarvestStep.USER_CAPTURING_POLLEN
                 else -> it.currentStep
             }
@@ -90,8 +88,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             it.copy(currentStep = nextStep, bourdonMessage = null)
         }
     }
-
-    // BOURDON'S REFACTOR: Les méthodes onUserIntentCaptured, onVoiceRecordingStarted, onSkipIntent sont maintenant OBSOLÈTES et supprimées.
 
     fun startPollenAnalysis(bitmap: Bitmap, pollenForge: PollenForge) {
         if (_uiState.value.capturedPollen.size >= 4) {
@@ -172,7 +168,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             val aggregatedReport = aggregateJsonReports(currentState.capturedPollen)
 
             val pollenToSave = DbPollenGrain(
-                // BOURDON'S REFACTOR: L'intention utilisateur est maintenant toujours nulle.
                 userIntent = null,
                 pollenImagePaths = savedImagePaths,
                 swarmAnalysisReportJson = aggregatedReport,
@@ -184,7 +179,8 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             pollenGrainDao.insert(pollenToSave)
             Log.i(TAG, "Nouveau PollenGrain (ID: ${pollenToSave.id}) inséré dans la base de données.")
 
-            launchIdentificationWorker()
+            // BOURDON'S FIX: Appel à la nouvelle fonction qui utilise le bon worker.
+            launchForgeWorker()
 
             _uiState.update { it.copy(currentStep = HarvestStep.SAVED, bourdonMessage = getApplication<Application>().getString(R.string.bourdon_save_success)) }
 
@@ -193,8 +189,9 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun launchIdentificationWorker() {
-        Log.d(TAG, "Lancement du IdentificationWorker.")
+    // BOURDON'S FIX: La fonction est renommée et corrigée pour utiliser ForgeWorker.
+    private fun launchForgeWorker() {
+        Log.d(TAG, "Lancement du ForgeWorker.")
 
         val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
         val requiresCharging = prefs.getBoolean(ToolsDialogFragment.KEY_REQUIRE_CHARGING, false)
@@ -205,17 +202,17 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             .setRequiresDeviceIdle(requiresIdle)
             .build()
 
-        val identificationRequest = OneTimeWorkRequestBuilder<IdentificationWorker>()
+        val forgeRequest = OneTimeWorkRequestBuilder<ForgeWorker>()
             .setConstraints(constraints)
             .build()
 
         workManager.beginUniqueWork(
             "PollenForgeChain",
             ExistingWorkPolicy.APPEND_OR_REPLACE,
-            identificationRequest
+            forgeRequest
         ).enqueue()
 
-        Log.i(TAG, "IdentificationWorker mis en file d'attente avec succès.")
+        Log.i(TAG, "ForgeWorker mis en file d'attente avec succès.")
     }
 
     private suspend fun savePollenImages(captures: List<PollenCapture>): List<String> = withContext(Dispatchers.IO) {

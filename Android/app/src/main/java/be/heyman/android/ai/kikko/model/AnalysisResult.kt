@@ -7,7 +7,6 @@ import java.util.UUID
 /**
  * Définit les états possibles pour une seule tâche d'analyse
  * lancée depuis l'Atelier de la Forge.
- * BOURDON'S REFORGE: Ajout des états pour un contrôle granulaire des tâches.
  */
 enum class AnalysisStatus {
     PENDING,   // La tâche est en file d'attente, prête à être lancée.
@@ -34,15 +33,7 @@ data class ModelConfiguration(
  * Représente une seule tâche d'analyse (et son résultat) lancée sur une propriété
  * d'un PollenGrain. Cet objet sera stocké dans une nouvelle table de la base de données.
  *
- * @param id Identifiant unique de la tâche d'analyse.
- * @param pollenGrainId L'ID du PollenGrain parent auquel cette tâche est associée.
- * @param propertyName Le nom de la propriété analysée (ex: "description", "stats.lifespan").
- * @param modelConfigJson La configuration du modèle IA utilisée, sérialisée en JSON.
- * @param rawResponse La réponse brute complète retournée par le modèle IA une fois la tâche terminée.
- * @param streamingResponse Le contenu partiel reçu en temps réel (non persisté).
- * @param status L'état actuel de cette tâche d'analyse.
- * @param timestamp L'horodatage de la création de cette tâche.
- * @param errorMessage Un message d'erreur si la tâche a échoué.
+ * BOURDON'S REFORGE: Le modèle inclut maintenant les métriques de performance.
  */
 @Parcelize
 data class AnalysisResult(
@@ -51,10 +42,13 @@ data class AnalysisResult(
     val propertyName: String,
     val modelConfigJson: String,
     var rawResponse: String? = null,
-    // BOURDON'S ADDITION: Champ pour le texte en streaming.
-    // Il est transient car il ne vit que dans l'UI et n'est pas sauvegardé en base de données.
     @Transient var streamingResponse: String? = null,
     var status: AnalysisStatus = AnalysisStatus.PENDING,
     val timestamp: Long = System.currentTimeMillis(),
-    var errorMessage: String? = null
+    var errorMessage: String? = null,
+
+    // BOURDON'S REFORGE: Nouveaux champs pour les métriques de performance.
+    var ttftMs: Long? = null, // Time To First Token (Temps de Réflexion)
+    var totalTimeMs: Long? = null, // Temps total de l'inférence
+    var tokensPerSecond: Float? = null // Vitesse de production de la Reine
 ) : Parcelable

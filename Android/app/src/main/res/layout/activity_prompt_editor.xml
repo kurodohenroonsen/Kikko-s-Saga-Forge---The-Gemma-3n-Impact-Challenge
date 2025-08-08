@@ -50,6 +50,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+
                 android:minHeight="48dp" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -67,7 +68,7 @@
                     android:inputType="textMultiLine"
                     android:minHeight="300dp"
                     android:scrollbars="vertical"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/kikko_gold"
                     android:typeface="monospace" />
 
             </com.google.android.material.textfield.TextInputLayout>

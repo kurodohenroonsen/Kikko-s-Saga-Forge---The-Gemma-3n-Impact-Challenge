@@ -24,6 +24,32 @@
                 android:text="@string/judgment_section_title_deliberation"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+            <!-- BOURDON'S DEFINITIVE FIX: Utilisation des attributs de couleur d'erreur existants. -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/judgment_warning_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="?attr/colorErrorContainer"
+                app:strokeColor="?attr/colorError"
+                app:strokeWidth="1dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/judgment_warning_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="12dp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnErrorContainer"
+                    app:drawableStartCompat="@android:drawable/ic_dialog_alert"
+                    app:drawableTint="?attr/colorOnErrorContainer"
+                    android:drawablePadding="8dp"
+                    tools:text="Attention : 2 sur 4 Reines ont terminé. Votre jugement sera basé sur des preuves partielles." />
+
+            </com.google.android.material.card.MaterialCardView>
+
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -68,6 +94,7 @@
                 android:layout_marginVertical="24dp" />
 
             <TextView
+                android:id="@+id/judgment_evidence_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/judgment_section_title_evidence"
@@ -80,6 +107,8 @@
                 android:layout_marginTop="8dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:typeface="monospace"
+                android:visibility="gone"
+                tools:visibility="visible"
                 tools:text="[Le rapport d'essaim et la liste des propositions des Reines seront affichés ici.]" />
 
         </LinearLayout>
@@ -108,6 +137,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
+            android:enabled="false"
             android:text="@string/judgment_button_confirm" />
     </LinearLayout>
 
