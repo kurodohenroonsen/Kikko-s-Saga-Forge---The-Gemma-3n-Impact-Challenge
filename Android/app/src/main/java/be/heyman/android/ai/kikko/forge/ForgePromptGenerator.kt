@@ -1,21 +1,22 @@
 package be.heyman.android.ai.kikko.forge
 
 import be.heyman.android.ai.kikko.prompt.PromptManager
+import java.util.Locale
 
 object ForgePromptGenerator {
 
     /**
-     * BOURDON'S REFACTOR: Le prompt est maintenant récupéré dynamiquement depuis le PromptManager.
-     * La logique de formatage reste, mais le contenu du prompt est maintenant externe.
+     * BOURDON'S FINAL REFACTOR: Le générateur récupère le prompt brut (maintenant en dur
+     * dans le PromptManager) et effectue lui-même le formatage.
      */
     fun generateIdentificationTournamentPrompt(swarmReportJson: String): String {
-        return PromptManager.getPrompt("forge_identification", swarmReportJson)
+        val rawPrompt = PromptManager.getPrompt("forge_identification")
+        // Note: Le '$' dans %1$s est crucial pour éviter les ambiguïtés de formatage.
+        return String.format(rawPrompt, swarmReportJson)
     }
 
     /**
-     * BOURDON'S REFACTOR: Le générateur principal utilise maintenant le PromptManager.
-     * Le prompt multimodal pour la description est un cas spécial, et le prompt de base
-     * gère toutes les autres extractions de propriétés.
+     * BOURDON'S FINAL REFACTOR: La logique de formatage est de retour dans le générateur.
      */
     fun generatePropertyForgePrompt(
         propertyName: String,
@@ -27,19 +28,21 @@ object ForgePromptGenerator {
     ): String {
 
         if (propertyName == "description") {
-            return PromptManager.getPrompt(
-                "forge_description_multimodal",
+            val rawPrompt = PromptManager.getPrompt("forge_description_multimodal")
+            return String.format(
+                rawPrompt,
                 specificName,
                 deckName,
                 swarmReportJson
             )
         }
 
+        val rawPrompt = PromptManager.getPrompt("forge_property_base")
         val formattedDescription = if (existingDescription != null) "\n[NATIVE DESCRIPTION]:\n$existingDescription" else ""
         val formattedDependency = if (dependencyDataJson != null) "\n[DEPENDENCY DATA (PREVIOUSLY FORGED)]:\n$dependencyDataJson" else ""
 
-        return PromptManager.getPrompt(
-            "forge_property_base",
+        return String.format(
+            rawPrompt,
             deckName,
             specificName,
             propertyName,

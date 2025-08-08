@@ -2,7 +2,6 @@ package be.heyman.android.ai.kikko.prompt
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
@@ -28,9 +27,10 @@ class PromptEditorActivity : AppCompatActivity() {
     private lateinit var promptEditText: EditText
     private lateinit var saveButton: Button
 
+    // BOURDON'S REFACTOR: La map locale contient maintenant les prompts complets (simples chaînes).
     private var currentPrompts = mutableMapOf<String, String>()
     private var promptKeys = listOf<String>()
-    private var isSpinnerUserAction = false
+    private var lastSelectedSpinnerPosition = -1
 
     private val importPromptsLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -64,7 +64,6 @@ class PromptEditorActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        // BOURDON'S FIX: This line is critical to make the menu visible and functional.
         setSupportActionBar(toolbar)
         toolbar.setNavigationOnClickListener { finish() }
     }
@@ -74,6 +73,7 @@ class PromptEditorActivity : AppCompatActivity() {
     }
 
     private fun loadInitialPrompts() {
+        // BOURDON'S REFACTOR: On charge la map simple de prompts.
         currentPrompts = PromptManager.getAllPrompts().toMutableMap()
         promptKeys = currentPrompts.keys.sorted()
 
@@ -83,28 +83,27 @@ class PromptEditorActivity : AppCompatActivity() {
 
         promptSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                // Sauvegarde les changements du prompt précédent avant de changer
-                if (isSpinnerUserAction) {
-                    val previouslySelectedKey = parent?.getItemAtPosition(position - 1)?.toString() ?: promptKeys.getOrNull(0)
-                    if (previouslySelectedKey != null) {
-                        currentPrompts[previouslySelectedKey] = promptEditText.text.toString()
-                    }
+                // Sauvegarde les changements du prompt précédent avant de charger le nouveau.
+                if (lastSelectedSpinnerPosition != -1 && lastSelectedSpinnerPosition < promptKeys.size) {
+                    val previousKey = promptKeys[lastSelectedSpinnerPosition]
+                    currentPrompts[previousKey] = promptEditText.text.toString()
                 }
 
                 val selectedKey = promptKeys[position]
                 promptEditText.setText(currentPrompts[selectedKey])
-                isSpinnerUserAction = true
+                lastSelectedSpinnerPosition = position
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         if (promptKeys.isNotEmpty()) {
             promptEditText.setText(currentPrompts[promptKeys.first()])
+            lastSelectedSpinnerPosition = 0
         }
     }
 
     private fun saveChanges() {
-        // Mettre à jour la valeur actuelle de l'éditeur dans la map avant de sauvegarder
+        // Mettre à jour la valeur de l'éditeur dans la map avant de sauvegarder.
         val selectedKey = promptSpinner.selectedItem as? String
         if (selectedKey != null) {
             currentPrompts[selectedKey] = promptEditText.text.toString()
@@ -114,11 +113,6 @@ class PromptEditorActivity : AppCompatActivity() {
             PromptManager.savePrompts(this@PromptEditorActivity, currentPrompts)
             Toast.makeText(this@PromptEditorActivity, R.string.toast_prompts_saved, Toast.LENGTH_SHORT).show()
         }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.prompt_editor_menu, menu)
-        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

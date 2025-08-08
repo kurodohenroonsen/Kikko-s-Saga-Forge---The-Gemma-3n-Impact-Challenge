@@ -51,9 +51,10 @@ object ClashPromptGenerator {
             else -> "English"
         }
 
-        // BOURDON'S REFACTOR: Le prompt est maintenant récupéré dynamiquement.
-        return PromptManager.getPrompt(
-            "clash_verdict",
+        // BOURDON'S FINAL REFACTOR: Le générateur récupère le prompt brut et effectue le formatage.
+        val rawPrompt = PromptManager.getPrompt("clash_verdict")
+        return String.format(
+            rawPrompt,
             question,
             deviceLanguage,
             card1.specificName,

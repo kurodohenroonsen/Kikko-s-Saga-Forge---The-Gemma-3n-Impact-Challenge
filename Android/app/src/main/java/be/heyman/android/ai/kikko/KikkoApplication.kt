@@ -29,12 +29,8 @@ import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
 import be.heyman.android.ai.kikko.prompt.PromptManager
 
-// BOURDON'S FIX: Suppression de l'annotation HiltAndroidApp.
-// @HiltAndroidApp
 class KikkoApplication : Application(), Configuration.Provider {
 
-  // BOURDON'S FIX: Instances singleton des DAOs et Helpers, gérées manuellement.
-  // Ces propriétés seront accessibles via `(application as KikkoApplication).propertyName`
   val cardDao: CardDao by lazy { CardDao(this) }
   val pollenGrainDao: PollenGrainDao by lazy { PollenGrainDao(this) }
   val analysisResultDao: AnalysisResultDao by lazy { AnalysisResultDao(this) }
@@ -49,13 +45,11 @@ class KikkoApplication : Application(), Configuration.Provider {
 
     writeLaunchInfo(context = this)
 
-    // BOURDON'S ADDITION: Initialisation critique du gestionnaire de prompts.
+    // BOURDON'S CRITICAL FIX: This line is mandatory and was missing.
+    // It loads all prompts into memory when the app starts.
     PromptManager.initialize(this)
 
-    // BOURDON'S FIX: Initialisation des DAOs et Helpers pour s'assurer qu'ils sont prêts.
-    // L'accès lazy ci-dessus garantit qu'ils ne sont créés qu'une fois.
-    // On peut les "toucher" ici pour s'assurer qu'ils sont créés au démarrage de l'app.
-    cardDao.hashCode() // Juste pour forcer l'initialisation lazy
+    cardDao.hashCode()
     pollenGrainDao.hashCode()
     analysisResultDao.hashCode()
     forgeRepository.hashCode()

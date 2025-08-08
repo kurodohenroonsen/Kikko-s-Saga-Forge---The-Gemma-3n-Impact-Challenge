@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
@@ -59,6 +60,17 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
     private lateinit var totalHoneyCounter: TextView
     private lateinit var errorPollenCounter: TextView
 
+    // BOURDON'S ADDITION: Le nouveau launcher pour les permissions multiples.
+    private val requestMultiplePermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allGranted = permissions.entries.all { it.value }
+            if (allGranted) {
+                Toast.makeText(this, "Toutes les autorisations ont été accordées. La Ruche est prête !", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Certaines autorisations ont été refusées. Certaines fonctionnalités pourraient ne pas être disponibles.", Toast.LENGTH_LONG).show()
+            }
+        }
+
     private val importSagaLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             lifecycleScope.launch {
@@ -95,20 +107,15 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
             }
         }
     }
-    /*
-        private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                modelToTest?.let { testVoskModel(it) }
-            } else {
-                Toast.makeText(this, R.string.mic_permission_denied, Toast.LENGTH_SHORT).show()
-            }
-        }
-    */
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_start)
         Log.d(TAG, "onCreate: L'activité de démarrage est en cours de création.")
+
+        // BOURDON'S ADDITION: La vérification des permissions est maintenant la première chose que nous faisons.
+        checkAndRequestPermissions()
 
         pollenGrainDao = PollenGrainDao(this)
         cardDao = CardDao(this)
@@ -119,7 +126,38 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
 
         bindViewsAndSetupNavigation()
         setupWindowInsets()
-        //observeVoskService()
+    }
+
+    // BOURDON'S ADDITION: Nouvelle fonction pour gérer la logique des permissions.
+    private fun checkAndRequestPermissions() {
+        val requiredPermissions = mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            requiredPermissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+
+        val missingPermissions = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            Log.i(TAG, "Demande des autorisations manquantes: $missingPermissions")
+            requestMultiplePermissionsLauncher.launch(missingPermissions.toTypedArray())
+        } else {
+            Log.i(TAG, "Toutes les autorisations nécessaires sont déjà accordées.")
+        }
     }
 
     override fun onResume() {
@@ -292,61 +330,7 @@ class StartActivity : AppCompatActivity(), ToolsDialogFragment.ToolsDialogListen
             }
         }
     }
-    /*
-        private fun observeVoskService() {
 
-            SttVoskService.voskResult.observe(this) { result ->
-                val dialog = supportFragmentManager.findFragmentByTag(ToolsDialogFragment.TAG) as? ToolsDialogFragment
-                dialog?.updateVoskStatus(result)
-            }
-
-
-        }
-
-        override fun onImportVoskModelRequested() {
-            importVoskModelLauncher.launch("application/zip")
-        }
-
-        override fun onTestVoskModelRequested(modelDir: File) {
-            this.modelToTest = modelDir
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                testVoskModel(modelDir)
-            } else {
-                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-
-        override fun onStopVoskListeningRequested() {
-            SttVoskService.stopListening()
-        }
-
-        private fun testVoskModel(modelDir: File) {
-            val dialog = supportFragmentManager.findFragmentByTag(ToolsDialogFragment.TAG) as? ToolsDialogFragment
-            dialog?.updateVoskStatus(VoskResult(VoskStatus.LOADING, getString(R.string.vosk_loading_model, modelDir.name)))
-
-            val dummyModel = Model(name = modelDir.name, downloadFileName = "", url = "", sizeInBytes = 0)
-            SttVoskService.loadModel(dummyModel, File(filesDir, "vosk-models")) { success ->
-                if (success) {
-                    SttVoskService.startListening()
-                } else {
-                    dialog?.updateVoskStatus(
-                        VoskResult(
-                            VoskStatus.ERROR,
-                            getString(R.string.vosk_loading_model_failed)
-                        )
-                    )
-                }
-            }
-        }
-
-        override fun onDeleteVoskModelRequested(modelDir: File) {
-            if (modelDir.exists() && modelDir.deleteRecursively()) {
-                Toast.makeText(this, getString(R.string.vosk_model_deleted_success, modelDir.name), Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, getString(R.string.vosk_model_deleted_failure, modelDir.name), Toast.LENGTH_SHORT).show()
-            }
-        }
-    */
     private suspend fun copyModelToAppStorage(sourceUri: Uri, directory: String): String? = withContext(Dispatchers.IO) {
         val tag = "ModelStorage"
         try {
