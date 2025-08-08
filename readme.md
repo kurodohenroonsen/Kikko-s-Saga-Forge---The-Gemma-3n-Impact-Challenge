@@ -18,6 +18,12 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
 
 ---
 
+## 📘 User Guide & Overview
+- 🧭 **Start here**: read the full guide → **[User Guide](./doc/user_guide.md)**.
+- 🧪 **Technical architecture (Gemma 3n on Android)**: read the deep‑dive → **[Technical Documentation](./doc/tech_arch_gemma3n_android.md)**.
+
+---
+
 ### **1. The Vision: An Answer to the AI Trust Crisis**
 
 This document serves as the technical verification for our submission to the Google Gemma 3n Impact Challenge. It details the architecture of Kikko's Saga Forge, a novel **"Verifiable & Evolvable Knowledge Game"** designed as a 100% on-device, privacy-first Android application. We explain our specific and multifaceted use of the Gemma 3n model, highlight the significant engineering challenges we overcame—particularly in ensuring AI robustness and system resilience—and justify the technical choices that make our vision a functional reality. This document proves that our video demonstration is backed by deliberate, concrete engineering.
@@ -100,6 +106,4 @@ Kikko is the living proof that these principles are not just theoretical. It dem
 
 By rewarding Kikko, you are not just rewarding an application, but the first stone of a potential Library of Tomorrow—one that is more structured, more reliable, and worthy of our trust.
 
-## 📘 User Guide & Overview
-- 🧭 **Start here**: read the full guide → **[User Guide](./doc/user_guide.md)**.
-- 🧪 **Technical architecture (Gemma 3n on Android)**: read the deep‑dive → **[Technical Documentation](./doc/tech_arch_gemma3n_android.md)**.
+
