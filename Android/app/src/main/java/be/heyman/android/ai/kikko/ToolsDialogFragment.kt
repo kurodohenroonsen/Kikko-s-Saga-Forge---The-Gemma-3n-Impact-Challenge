@@ -12,15 +12,21 @@ import android.widget.Button
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import be.heyman.android.ai.kikko.data.ModelCatalogue
+import be.heyman.android.ai.kikko.forge.NanoLlmHelper
 import be.heyman.android.ai.kikko.prompt.PromptEditorActivity
 import be.heyman.android.ai.kikko.ui.adapters.LocalModelAdapter
 import be.heyman.android.ai.kikko.worker.DownloadManagerKikko
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class ToolsDialogFragment : DialogFragment() {
@@ -31,7 +37,6 @@ class ToolsDialogFragment : DialogFragment() {
         fun onAddModelRequested()
         fun onDeleteModelRequested(modelFile: File)
         fun onNukeDatabaseRequested()
-        // BOURDON'S ADDITION: Nouvelle méthode pour lancer l'éditeur de prompts.
         fun onManagePromptsRequested()
     }
 
@@ -47,8 +52,13 @@ class ToolsDialogFragment : DialogFragment() {
     private lateinit var queenAcceleratorRadioGroup: RadioGroup
     private lateinit var downloadModelsButton: Button
     private lateinit var downloadDecksButton: Button
-    // BOURDON'S ADDITION: Référence pour le nouveau bouton.
     private lateinit var managePromptsButton: Button
+    // BOURDON'S ADDITION: Vues pour la section Gemini Nano
+    private lateinit var nanoStatusTextView: TextView
+    private lateinit var useNanoSwitch: SwitchMaterial
+    private lateinit var legacyQueenTitle: TextView
+    private lateinit var queenSelectorRecyclerView: RecyclerView
+    private lateinit var queenAcceleratorTitle: TextView
 
 
     companion object {
@@ -58,6 +68,8 @@ class ToolsDialogFragment : DialogFragment() {
         const val KEY_REQUIRE_IDLE = "KEY_FORGE_WHEN_IDLE"
         const val KEY_SELECTED_FORGE_QUEEN = "KEY_SELECTED_FORGE_QUEEN"
         const val KEY_SELECTED_FORGE_QUEEN_ACCELERATOR = "KEY_SELECTED_FORGE_QUEEN_ACCELERATOR"
+        // BOURDON'S ADDITION: Nouvelle clé de préférence pour Nano
+        const val KEY_USE_GEMINI_NANO = "KEY_USE_GEMINI_NANO"
 
 
         fun newInstance(): ToolsDialogFragment {
@@ -82,14 +94,18 @@ class ToolsDialogFragment : DialogFragment() {
         prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         bindViews(view)
+        setupNanoSection() // Doit être appelé avant les autres setup de Reines
         setupForgeQueenSelector(view)
         setupForgeQueenAccelerator()
         setupQueenModelManagement(view)
         setupSagaButtons(view)
         setupForgeSettings()
         setupNukeButton()
-        // BOURDON'S ADDITION: Appel à la nouvelle méthode de configuration.
         setupPromptManagementButton()
+
+        // État initial de l'UI des Reines legacy
+        val useNano = prefs.getBoolean(KEY_USE_GEMINI_NANO, false)
+        toggleLegacyQueenSelection(!useNano)
     }
 
     private fun bindViews(view: View) {
@@ -99,12 +115,59 @@ class ToolsDialogFragment : DialogFragment() {
         queenAcceleratorRadioGroup = view.findViewById(R.id.tools_radiogroup_queen_accelerator)
         downloadModelsButton = view.findViewById(R.id.tools_button_download_models)
         downloadDecksButton = view.findViewById(R.id.tools_button_download_decks)
-        // BOURDON'S ADDITION: Liaison du nouveau bouton.
         managePromptsButton = view.findViewById(R.id.tools_button_manage_prompts)
+        // BOURDON'S ADDITION: Liaison des nouvelles vues
+        nanoStatusTextView = view.findViewById(R.id.tools_nano_status_textview)
+        useNanoSwitch = view.findViewById(R.id.tools_switch_use_nano)
+        legacyQueenTitle = view.findViewById(R.id.tools_active_queen_title)
+        queenSelectorRecyclerView = view.findViewById(R.id.tools_recyclerview_queen_selector)
+        queenAcceleratorTitle = view.findViewById(R.id.tools_queen_accelerator_title)
     }
 
+    private fun setupNanoSection() {
+        lifecycleScope.launch {
+            val isAvailable = NanoLlmHelper.isNanoAvailable(requireContext())
+            withContext(Dispatchers.Main) {
+                if (isAvailable) {
+                    nanoStatusTextView.text = "Disponible 👑"
+                    nanoStatusTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.kikko_success_green))
+                    useNanoSwitch.visibility = View.VISIBLE
+                    useNanoSwitch.isChecked = prefs.getBoolean(KEY_USE_GEMINI_NANO, false)
+                } else {
+                    nanoStatusTextView.text = "Non disponible sur cet appareil."
+                    nanoStatusTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.kikko_error_red))
+                    useNanoSwitch.visibility = View.GONE
+                    // S'assurer que l'option est désactivée si non disponible
+                    if (prefs.getBoolean(KEY_USE_GEMINI_NANO, false)) {
+                        prefs.edit().putBoolean(KEY_USE_GEMINI_NANO, false).apply()
+                        toggleLegacyQueenSelection(true)
+                    }
+                }
+            }
+        }
+
+        useNanoSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_USE_GEMINI_NANO, isChecked).apply()
+            val status = if (isChecked) "activée" else "désactivée"
+            Toast.makeText(context, "La Reine Gemini Nano est maintenant $status par défaut.", Toast.LENGTH_SHORT).show()
+            toggleLegacyQueenSelection(!isChecked)
+        }
+    }
+
+    private fun toggleLegacyQueenSelection(enabled: Boolean) {
+        legacyQueenTitle.alpha = if (enabled) 1.0f else 0.5f
+        queenSelectorRecyclerView.alpha = if (enabled) 1.0f else 0.5f
+        queenAcceleratorTitle.alpha = if (enabled) 1.0f else 0.5f
+        queenAcceleratorRadioGroup.alpha = if (enabled) 1.0f else 0.5f
+
+        queenSelectorRecyclerView.isEnabled = enabled
+        for (i in 0 until queenAcceleratorRadioGroup.childCount) {
+            queenAcceleratorRadioGroup.getChildAt(i).isEnabled = enabled
+        }
+    }
+
+
     private fun setupForgeQueenSelector(view: View) {
-        val queenSelectorRecyclerView: RecyclerView = view.findViewById(R.id.tools_recyclerview_queen_selector)
         val selectedQueenName = prefs.getString(KEY_SELECTED_FORGE_QUEEN, null)
 
         queenSelectorAdapter = QueenModelAdapter(
@@ -170,7 +233,6 @@ class ToolsDialogFragment : DialogFragment() {
         }
     }
 
-    // BOURDON'S ADDITION: Nouvelle méthode pour configurer le bouton de gestion des prompts.
     private fun setupPromptManagementButton() {
         managePromptsButton.setOnClickListener {
             listener?.onManagePromptsRequested()

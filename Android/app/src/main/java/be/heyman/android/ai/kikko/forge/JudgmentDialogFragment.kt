@@ -1,5 +1,6 @@
 package be.heyman.android.ai.kikko.forge
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -69,6 +70,12 @@ class JudgmentDialogFragment : DialogFragment() {
         }
     }
 
+    // BOURDON'S CRITICAL FIX: S'assurer que le ViewModel est notifié lorsque le dialogue est fermé par l'utilisateur.
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        viewModel.dismissJudgment()
+    }
+
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collectLatest { state ->
@@ -100,7 +107,7 @@ class JudgmentDialogFragment : DialogFragment() {
                         judgmentWarningCard.isVisible = false
                     }
                     JudgmentState.None -> {
-                        // L'activité gère la fermeture.
+                        // L'activité gère la fermeture, et onDismiss s'assure de la propreté de l'état.
                     }
                 }
             }

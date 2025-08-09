@@ -39,7 +39,8 @@ android {
 
   defaultConfig {
     applicationId = "be.heyman.android.ai.kikko"
-    minSdk = 26
+    // BOURDON'S FIX: Augmentation du minSdk requise pour Gemini Nano.
+    minSdk = 31
     targetSdk = 35
     versionCode = 1
     versionName = "1.0.4"
@@ -91,6 +92,10 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material3)
 
+  // BOURDON'S ADDITION: Dépendances pour le pont entre Coroutines et les API asynchrones de Google
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.8.0")
+
   implementation(libs.androidx.compose.navigation)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.material.icon.extended)
@@ -100,6 +105,8 @@ dependencies {
   implementation(libs.androidx.lifecycle.process)
   implementation(libs.mediapipe.tasks.text)
   implementation(libs.mediapipe.tasks.genai)
+  // BOURDON'S ADDITION: Dépendance pour Gemini Nano (AICore)
+  implementation("com.google.ai.edge.aicore:aicore:0.0.1-exp01")
   implementation(libs.mediapipe.tasks.imagegen)
   implementation(libs.commonmark)
   implementation(libs.richtext)
@@ -146,6 +153,9 @@ dependencies {
   implementation("com.google.mlkit:object-detection-custom:17.0.2")
   implementation("com.google.mlkit:image-labeling:17.0.9")
   implementation("com.google.mlkit:image-labeling-custom:17.0.3")
+  // BOURDON'S ADDITION: Dépendance pour l'API de description d'image GenAI de ML Kit
+  implementation("com.google.mlkit:genai-image-description:1.0.0-beta1")
+
 
   // BOURDON'S ADDITION: Dépendances requises pour Google Nearby et Location
   implementation("com.google.android.gms:play-services-nearby:19.3.0")
@@ -1564,15 +1574,21 @@ import android.widget.Button
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import be.heyman.android.ai.kikko.data.ModelCatalogue
+import be.heyman.android.ai.kikko.forge.NanoLlmHelper
 import be.heyman.android.ai.kikko.prompt.PromptEditorActivity
 import be.heyman.android.ai.kikko.ui.adapters.LocalModelAdapter
 import be.heyman.android.ai.kikko.worker.DownloadManagerKikko
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class ToolsDialogFragment : DialogFragment() {
@@ -1583,7 +1599,6 @@ class ToolsDialogFragment : DialogFragment() {
         fun onAddModelRequested()
         fun onDeleteModelRequested(modelFile: File)
         fun onNukeDatabaseRequested()
-        // BOURDON'S ADDITION: Nouvelle méthode pour lancer l'éditeur de prompts.
         fun onManagePromptsRequested()
     }
 
@@ -1599,8 +1614,13 @@ class ToolsDialogFragment : DialogFragment() {
     private lateinit var queenAcceleratorRadioGroup: RadioGroup
     private lateinit var downloadModelsButton: Button
     private lateinit var downloadDecksButton: Button
-    // BOURDON'S ADDITION: Référence pour le nouveau bouton.
     private lateinit var managePromptsButton: Button
+    // BOURDON'S ADDITION: Vues pour la section Gemini Nano
+    private lateinit var nanoStatusTextView: TextView
+    private lateinit var useNanoSwitch: SwitchMaterial
+    private lateinit var legacyQueenTitle: TextView
+    private lateinit var queenSelectorRecyclerView: RecyclerView
+    private lateinit var queenAcceleratorTitle: TextView
 
 
     companion object {
@@ -1610,6 +1630,8 @@ class ToolsDialogFragment : DialogFragment() {
         const val KEY_REQUIRE_IDLE = "KEY_FORGE_WHEN_IDLE"
         const val KEY_SELECTED_FORGE_QUEEN = "KEY_SELECTED_FORGE_QUEEN"
         const val KEY_SELECTED_FORGE_QUEEN_ACCELERATOR = "KEY_SELECTED_FORGE_QUEEN_ACCELERATOR"
+        // BOURDON'S ADDITION: Nouvelle clé de préférence pour Nano
+        const val KEY_USE_GEMINI_NANO = "KEY_USE_GEMINI_NANO"
 
 
         fun newInstance(): ToolsDialogFragment {
@@ -1634,14 +1656,18 @@ class ToolsDialogFragment : DialogFragment() {
         prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         bindViews(view)
+        setupNanoSection() // Doit être appelé avant les autres setup de Reines
         setupForgeQueenSelector(view)
         setupForgeQueenAccelerator()
         setupQueenModelManagement(view)
         setupSagaButtons(view)
         setupForgeSettings()
         setupNukeButton()
-        // BOURDON'S ADDITION: Appel à la nouvelle méthode de configuration.
         setupPromptManagementButton()
+
+        // État initial de l'UI des Reines legacy
+        val useNano = prefs.getBoolean(KEY_USE_GEMINI_NANO, false)
+        toggleLegacyQueenSelection(!useNano)
     }
 
     private fun bindViews(view: View) {
@@ -1651,12 +1677,59 @@ class ToolsDialogFragment : DialogFragment() {
         queenAcceleratorRadioGroup = view.findViewById(R.id.tools_radiogroup_queen_accelerator)
         downloadModelsButton = view.findViewById(R.id.tools_button_download_models)
         downloadDecksButton = view.findViewById(R.id.tools_button_download_decks)
-        // BOURDON'S ADDITION: Liaison du nouveau bouton.
         managePromptsButton = view.findViewById(R.id.tools_button_manage_prompts)
+        // BOURDON'S ADDITION: Liaison des nouvelles vues
+        nanoStatusTextView = view.findViewById(R.id.tools_nano_status_textview)
+        useNanoSwitch = view.findViewById(R.id.tools_switch_use_nano)
+        legacyQueenTitle = view.findViewById(R.id.tools_active_queen_title)
+        queenSelectorRecyclerView = view.findViewById(R.id.tools_recyclerview_queen_selector)
+        queenAcceleratorTitle = view.findViewById(R.id.tools_queen_accelerator_title)
     }
 
+    private fun setupNanoSection() {
+        lifecycleScope.launch {
+            val isAvailable = NanoLlmHelper.isNanoAvailable(requireContext())
+            withContext(Dispatchers.Main) {
+                if (isAvailable) {
+                    nanoStatusTextView.text = "Disponible 👑"
+                    nanoStatusTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.kikko_success_green))
+                    useNanoSwitch.visibility = View.VISIBLE
+                    useNanoSwitch.isChecked = prefs.getBoolean(KEY_USE_GEMINI_NANO, false)
+                } else {
+                    nanoStatusTextView.text = "Non disponible sur cet appareil."
+                    nanoStatusTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.kikko_error_red))
+                    useNanoSwitch.visibility = View.GONE
+                    // S'assurer que l'option est désactivée si non disponible
+                    if (prefs.getBoolean(KEY_USE_GEMINI_NANO, false)) {
+                        prefs.edit().putBoolean(KEY_USE_GEMINI_NANO, false).apply()
+                        toggleLegacyQueenSelection(true)
+                    }
+                }
+            }
+        }
+
+        useNanoSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_USE_GEMINI_NANO, isChecked).apply()
+            val status = if (isChecked) "activée" else "désactivée"
+            Toast.makeText(context, "La Reine Gemini Nano est maintenant $status par défaut.", Toast.LENGTH_SHORT).show()
+            toggleLegacyQueenSelection(!isChecked)
+        }
+    }
+
+    private fun toggleLegacyQueenSelection(enabled: Boolean) {
+        legacyQueenTitle.alpha = if (enabled) 1.0f else 0.5f
+        queenSelectorRecyclerView.alpha = if (enabled) 1.0f else 0.5f
+        queenAcceleratorTitle.alpha = if (enabled) 1.0f else 0.5f
+        queenAcceleratorRadioGroup.alpha = if (enabled) 1.0f else 0.5f
+
+        queenSelectorRecyclerView.isEnabled = enabled
+        for (i in 0 until queenAcceleratorRadioGroup.childCount) {
+            queenAcceleratorRadioGroup.getChildAt(i).isEnabled = enabled
+        }
+    }
+
+
     private fun setupForgeQueenSelector(view: View) {
-        val queenSelectorRecyclerView: RecyclerView = view.findViewById(R.id.tools_recyclerview_queen_selector)
         val selectedQueenName = prefs.getString(KEY_SELECTED_FORGE_QUEEN, null)
 
         queenSelectorAdapter = QueenModelAdapter(
@@ -1722,7 +1795,6 @@ class ToolsDialogFragment : DialogFragment() {
         }
     }
 
-    // BOURDON'S ADDITION: Nouvelle méthode pour configurer le bouton de gestion des prompts.
     private fun setupPromptManagementButton() {
         managePromptsButton.setOnClickListener {
             listener?.onManagePromptsRequested()
@@ -1881,16 +1953,21 @@ object TtsService : TextToSpeech.OnInitListener {
 
                 override fun onDone(utteranceId: String?) {
                     Log.d(TAG, "TTS a fini de parler: $utteranceId")
-                    _isSpeaking.value = false
                     val completedRequest = directSpeakQueue.poll()
                     completedRequest?.onDone?.invoke()
+
+                    if (directSpeakQueue.isEmpty()) {
+                        _isSpeaking.value = false
+                    }
                     processDirectSpeakQueue()
                 }
 
                 override fun onError(utteranceId: String?) {
                     Log.e(TAG, "Erreur TTS pour: $utteranceId")
-                    _isSpeaking.value = false
                     directSpeakQueue.poll()
+                    if (directSpeakQueue.isEmpty()) {
+                        _isSpeaking.value = false
+                    }
                     processDirectSpeakQueue()
                 }
             })
@@ -1910,8 +1987,11 @@ object TtsService : TextToSpeech.OnInitListener {
     }
 
     fun speak(text: String, locale: Locale, onDone: (() -> Unit)? = null) {
-        // BOURDON'S CRITICAL FIX: Nettoyage du texte avant de le parler.
         val cleanedText = text.replace("*", "")
+        if (cleanedText.isBlank()) {
+            onDone?.invoke()
+            return
+        }
 
         val utteranceId = "KikkoDirectSpeak-${UUID.randomUUID()}"
         val request = SpeakRequest(utteranceId, cleanedText, locale, onDone)
@@ -1928,8 +2008,9 @@ object TtsService : TextToSpeech.OnInitListener {
         }
 
         val request = directSpeakQueue.peek() ?: return
+        _isSpeaking.value = true
         tts?.language = request.locale
-        tts?.speak(request.text, TextToSpeech.QUEUE_ADD, null, request.utteranceId)
+        tts?.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
     }
 
     fun stopAndClearQueue() {
@@ -6686,7 +6767,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -6696,8 +6779,9 @@ import be.heyman.android.ai.kikko.model.AnalysisStatus
 import be.heyman.android.ai.kikko.model.ModelConfiguration
 import com.google.android.material.chip.Chip
 import com.google.gson.Gson
+import java.util.Locale
 
-// BOURDON'S FIX: La classe DiffCallback est maintenant définie AVANT l'adaptateur qui l'utilise.
+// BOURDON'S REFORGE: Le DiffCallback est mis à jour pour vérifier les nouvelles métriques.
 class AnalysisResultDiffCallback : DiffUtil.ItemCallback<AnalysisResult>() {
     override fun areItemsTheSame(oldItem: AnalysisResult, newItem: AnalysisResult): Boolean {
         return oldItem.id == newItem.id
@@ -6707,7 +6791,8 @@ class AnalysisResultDiffCallback : DiffUtil.ItemCallback<AnalysisResult>() {
         return oldItem.status == newItem.status &&
                 oldItem.rawResponse == newItem.rawResponse &&
                 oldItem.streamingResponse == newItem.streamingResponse &&
-                oldItem.errorMessage == newItem.errorMessage
+                oldItem.errorMessage == newItem.errorMessage &&
+                oldItem.totalTimeMs == newItem.totalTimeMs // Vérifier une métrique suffit.
     }
 }
 
@@ -6756,6 +6841,11 @@ class AnalysisResultAdapter(
         val headerContainer: View = view.findViewById(R.id.analysis_header_container)
         val detailsContainer: View = view.findViewById(R.id.analysis_details_container)
 
+        // BOURDON'S REFORGE: Références aux nouvelles vues de métriques.
+        val metricsContainer: LinearLayout = view.findViewById(R.id.analysis_metrics_container)
+        val ttftMetric: TextView = view.findViewById(R.id.analysis_metric_ttft)
+        val totalTimeMetric: TextView = view.findViewById(R.id.analysis_metric_total_time)
+        val tpsMetric: TextView = view.findViewById(R.id.analysis_metric_tps)
 
         fun bind(task: AnalysisResult, isManuallyExpanded: Boolean, onHeaderClick: () -> Unit) {
             analysisStatusChip.text = task.status.name
@@ -6769,11 +6859,7 @@ class AnalysisResultAdapter(
             }
             analysisModelConfig.text = title
 
-            if (task.status == AnalysisStatus.RUNNING || isManuallyExpanded) {
-                detailsContainer.visibility = View.VISIBLE
-            } else {
-                detailsContainer.visibility = View.GONE
-            }
+            detailsContainer.isVisible = task.status == AnalysisStatus.RUNNING || isManuallyExpanded
             headerContainer.setOnClickListener { onHeaderClick() }
 
             val showResponseText = when (task.status) {
@@ -6782,27 +6868,27 @@ class AnalysisResultAdapter(
                 else -> null
             }
 
-            if (!showResponseText.isNullOrEmpty()) {
-                analysisRawResponse.visibility = View.VISIBLE
-                analysisRawResponse.text = showResponseText
-            } else {
-                analysisRawResponse.visibility = View.GONE
-            }
+            analysisRawResponse.isVisible = !showResponseText.isNullOrEmpty()
+            analysisRawResponse.text = showResponseText
 
-            analysisErrorMessage.visibility = if (task.status == AnalysisStatus.FAILED && task.errorMessage != null) {
-                analysisErrorMessage.text = task.errorMessage
-                View.VISIBLE
+            analysisErrorMessage.isVisible = task.status == AnalysisStatus.FAILED && task.errorMessage != null
+            analysisErrorMessage.text = task.errorMessage
+
+            // BOURDON'S REFORGE: Logique d'affichage des métriques.
+            if (task.status == AnalysisStatus.COMPLETED && task.totalTimeMs != null) {
+                metricsContainer.isVisible = true
+                ttftMetric.text = task.ttftMs?.let { "Reflex: ${it}ms" } ?: "Reflex: N/A"
+                totalTimeMetric.text = "Total: %.2fs".format(Locale.US, task.totalTimeMs!! / 1000.0)
+                tpsMetric.text = task.tokensPerSecond?.let { "Speed: %.1f t/s".format(Locale.US, it) } ?: "Speed: N/A"
             } else {
-                View.GONE
+                metricsContainer.isVisible = false
             }
 
             when (task.status) {
                 AnalysisStatus.PENDING, AnalysisStatus.PAUSED, AnalysisStatus.CANCELLED -> showActions(run = true)
                 AnalysisStatus.RUNNING -> showActions(pause = true, cancel = true)
                 AnalysisStatus.FAILED -> showActions(viewError = true, retry = true)
-                AnalysisStatus.COMPLETED -> {
-                    showActions(validate = true)
-                }
+                AnalysisStatus.COMPLETED -> showActions(validate = true)
             }
 
             analysisRunButton.setOnClickListener { onRun(task) }
@@ -6887,6 +6973,7 @@ class ForgeLlmHelper(
             Log.d(TAG, "Initialisation LLM avec modèle: ${model.name}, accélérateur: $accelerator, multimodal: $isMultimodal")
             val optionsBuilder = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(model.url)
+                // BOURDON'S FIX: Rétablissement de la valeur maximale supportée par le modèle.
                 .setMaxTokens(4096)
                 .setPreferredBackend(
                     if (accelerator == Accelerator.GPU.label) LlmInference.Backend.GPU
@@ -7756,7 +7843,6 @@ class ForgeWorkshopActivity : AppCompatActivity() {
             }
         }
 
-        // --- BOURDON'S REFACTORED INTELLIGENT BUTTON LOGIC (v2) ---
         var isLaunchButtonEnabled = true
         var disabledReasonResId: Int? = null
         if (isAwaitingValidation && propertyName != "identification") {
@@ -7788,12 +7874,10 @@ class ForgeWorkshopActivity : AppCompatActivity() {
         if (disabledReasonResId != null) launchButton.text = getString(disabledReasonResId)
         launchButton.isEnabled = isLaunchButtonEnabled
 
-        // BOURDON'S CRITICAL FIX: Le bouton de jugement apparaît dès qu'il y a au moins un résultat.
         judgmentButton.isVisible = hasCompletedResults && isLaunchButtonEnabled
         judgmentButton.setOnClickListener {
             viewModel.launchFinalJudgment(propertyName)
         }
-        // --- END OF REFACTORED LOGIC ---
 
         val summary = state.competitionSummaries[propertyName]
         if (summary != null && summary.items.isNotEmpty()) {
@@ -7811,6 +7895,8 @@ class ForgeWorkshopActivity : AppCompatActivity() {
             summaryCard.isVisible = false
         }
 
+        // BOURDON'S FIX (Erreurs #1 & #2): Les lambdas appellent maintenant les méthodes
+        // `runAnalysisTask` et `cancelAnalysisTask` qui existent dans le ViewModel corrigé.
         val adapter = AnalysisResultAdapter(
             onRun = { viewModel.runAnalysisTask(it) },
             onCancel = { viewModel.cancelAnalysisTask(it) },
@@ -7856,7 +7942,6 @@ class ForgeWorkshopActivity : AppCompatActivity() {
             .show()
     }
 }
-// --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopActivity.kt ---
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopActivity.kt ---
 
@@ -7868,6 +7953,7 @@ package be.heyman.android.ai.kikko.forge
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -7884,6 +7970,7 @@ import be.heyman.android.ai.kikko.model.ModelConfiguration
 import be.heyman.android.ai.kikko.model.PollenGrain
 import be.heyman.android.ai.kikko.model.PollenStatus
 import be.heyman.android.ai.kikko.model.Reasoning
+import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -7891,9 +7978,11 @@ import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -7903,11 +7992,11 @@ import java.util.concurrent.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-// BOURDON'S ADDITION: Data classes pour le résumé de la compétition
 data class CompetitionSummaryItem(
     val response: String,
     val voteCount: Int,
-    val firstValidTask: AnalysisResult // On garde une tâche source pour la validation
+    val contributingQueens: List<String>,
+    val firstValidTask: AnalysisResult
 )
 
 data class CompetitionSummary(
@@ -7915,11 +8004,29 @@ data class CompetitionSummary(
     val items: List<CompetitionSummaryItem>
 )
 
-// BOURDON'S ADDITION: Machine d'états pour le processus de Jugement Final.
+data class RankedProposal(
+    val value: String,
+    val voteCount: Int,
+    val reasoningSummary: String,
+    val sourceTaskId: String
+)
+
+data class ArbiterVerdict(
+    val arbiterReasoning: String,
+    val rankedProposals: List<RankedProposal>
+)
+
+// BOURDON'S REFORGE: Nouvelle data class pour encapsuler les métriques.
+data class PerformanceMetrics(
+    val ttftMs: Long?,
+    val totalTimeMs: Long,
+    val tokensPerSecond: Float
+)
+
 sealed class JudgmentState {
     data object None : JudgmentState()
     data class InProgress(val propertyName: String, val prompt: String, val streamingResponse: String = "") : JudgmentState()
-    data class Complete(val propertyName: String, val arbiterReasoning: String, val winningProposal: AnalysisResult) : JudgmentState()
+    data class Complete(val propertyName: String, val verdict: ArbiterVerdict) : JudgmentState()
     data class Failed(val propertyName: String, val error: String) : JudgmentState()
 }
 
@@ -7930,7 +8037,7 @@ data class ForgeWorkshopUiState(
     val selectedCard: KnowledgeCard? = null,
     val analysisResults: Map<String, List<AnalysisResult>> = emptyMap(),
     val competitionSummaries: Map<String, CompetitionSummary> = emptyMap(),
-    val judgmentState: JudgmentState = JudgmentState.None, // BOURDON'S ADDITION: Le nouvel état de jugement.
+    val judgmentState: JudgmentState = JudgmentState.None,
     val statusMessage: String? = null,
     val activeFilter: String = ForgeWorkshopViewModel.FILTER_RAW
 )
@@ -7940,6 +8047,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     private val forgeRepository: ForgeRepository = (application as KikkoApplication).forgeRepository
     private val llmHelper: ForgeLlmHelper = (application as KikkoApplication).forgeLlmHelper
     private val pollenGrainDao: PollenGrainDao = (application as KikkoApplication).pollenGrainDao
+    private val cardDao: CardDao = (application as KikkoApplication).cardDao
 
     private val TAG = "KikkoForgeTrace"
     private val _uiState = MutableStateFlow(ForgeWorkshopUiState())
@@ -7948,6 +8056,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
 
     private var competitionJob: Job? = null
     private var judgmentJob: Job? = null
+    private var streamingUpdateJob: Job? = null
 
     private var allWorkshopItems = listOf<Pair<PollenGrain, KnowledgeCard?>>()
 
@@ -7968,6 +8077,8 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     companion object {
         const val FILTER_ALL = "ALL"
         const val FILTER_RAW = "RAW"
+        // BOURDON'S NANO INTEGRATION: Nom constant pour la Reine Nano.
+        const val NANO_QUEEN_NAME = "Gemini Nano"
     }
 
     init {
@@ -7992,6 +8103,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             competitionJob?.cancel()
             judgmentJob?.cancel()
+            streamingUpdateJob?.cancel()
             Log.i(TAG, "[SELECT] Sélection du grain ID: ${grain.id} | Statut: ${grain.status} | CardID lié: ${grain.forgedCardId}")
 
             val card = allWorkshopItems.find { it.first.id == grain.id }?.second
@@ -8069,31 +8181,39 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_preparing_competition, propertyName)) }
 
-            val modelsToCompete = withContext(Dispatchers.IO) {
-                val modelsDir = File(getApplication<Application>().filesDir, "imported_models")
-                if (modelsDir.exists() && modelsDir.isDirectory) {
-                    modelsDir.listFiles { _, name -> name.endsWith(".task") }?.map { it.name } ?: emptyList()
-                } else {
-                    emptyList()
+            val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
+            val useNano = prefs.getBoolean(ToolsDialogFragment.KEY_USE_GEMINI_NANO, false)
+
+            val tasks = if (useNano) {
+                Log.i(TAG, "[COMPETITION] La Reine Gemini Nano est sélectionnée. Création d'une tâche unique.")
+                val nanoConfig = ModelConfiguration(NANO_QUEEN_NAME, "N/A", 0.7f, 40)
+                val task = AnalysisResult(
+                    pollenGrainId = grain.id,
+                    propertyName = propertyName,
+                    modelConfigJson = gson.toJson(nanoConfig),
+                    status = AnalysisStatus.PENDING
+                )
+                forgeRepository.insertAnalysisResult(task)
+                listOf(task)
+            } else {
+                val modelsToCompete = withContext(Dispatchers.IO) {
+                    File(getApplication<Application>().filesDir, "imported_models")
+                        .listFiles { _, name -> name.endsWith(".task") }?.map { it.name } ?: emptyList()
                 }
+
+                if (modelsToCompete.isEmpty()) {
+                    _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_no_queens_installed)) }
+                    return@launch
+                }
+                Log.i(TAG, "[COMPETITION] Reines en compétition: ${modelsToCompete.joinToString()}")
+                val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
+                forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
             }
 
-            if (modelsToCompete.isEmpty()) {
-                _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_no_queens_installed)) }
-                return@launch
-            }
-            Log.i(TAG, "[COMPETITION] Reines en compétition: ${modelsToCompete.joinToString()}")
-
-            val accelerator = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
-
-            val tasks = forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
             Log.i(TAG, "[COMPETITION] Création de ${tasks.size} tâches pour la propriété '$propertyName'.")
-
             refreshAnalysisResults(grain.id, propertyName)
             val message = getApplication<Application>().resources.getQuantityString(R.plurals.workshop_tasks_ready, tasks.size, tasks.size)
             _uiState.update { it.copy(isLoading = false, statusMessage = message) }
-
             launchCompetitionExecution(propertyName)
         }
     }
@@ -8132,8 +8252,9 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
 
                     if (name != null && deck != null) {
                         resultData = IdentificationResultData(
-                            specificName = name, deckName = deck,
                             reasoning = Reasoning(getString(R.string.fallback_reasoning_visual), getString(R.string.fallback_reasoning_correlation)),
+                            deckName = deck,
+                            specificName = name,
                             confidence = 0.5f
                         )
                     } else {
@@ -8149,10 +8270,10 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
                         reasoning = resultData.reasoning, description = null, stats = null, quiz = null, translations = null,
                         scientificName = null, vernacularName = null, allergens = null, ingredients = null
                     )
-                    cardId = (getApplication<Application>().applicationContext as KikkoApplication).cardDao.insert(newCard)
+                    cardId = cardDao.insert(newCard)
                     pollenGrainDao.updateForgingResult(grain.id, grain.status, cardId)
                 } else {
-                    (getApplication<Application>().applicationContext as KikkoApplication).cardDao.updateIdentification(
+                    cardDao.updateIdentification(
                         cardId = cardId, specificName = resultData.specificName, deckName = resultData.deckName,
                         reasoning = resultData.reasoning, confidence = resultData.confidence
                     )
@@ -8227,7 +8348,6 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    // BOURDON'S REFORGE V2: L'Orchestrateur Royal.
     private fun launchCompetitionExecution(propertyName: String, singleTaskToRun: AnalysisResult? = null) {
         competitionJob?.cancel()
         competitionJob = viewModelScope.launch(Dispatchers.IO) {
@@ -8240,23 +8360,25 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
                 return@launch
             }
 
-            // Regrouper les tâches par Reine (nom du modèle).
             val tasksByQueen = tasksToRun.groupBy {
                 gson.fromJson(it.modelConfigJson, ModelConfiguration::class.java).modelName
             }
             Log.i(TAG, "[ORCHESTRATOR] Lancement pour ${tasksToRun.size} tâches, réparties sur ${tasksByQueen.size} Reine(s).")
 
             for ((modelName, tasksForQueen) in tasksByQueen) {
+                if (!isActive) break
+                if (modelName == NANO_QUEEN_NAME) continue // La logique Nano est gérée séparément.
+
                 Log.i(TAG, "[ORCHESTRATOR] Convocation de la Reine '$modelName' pour ${tasksForQueen.size} tâche(s).")
                 val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
                 if (!modelFile.exists()) {
                     Log.e(TAG, "[ORCHESTRATOR] Échec : Fichier de la Reine IA '$modelName' introuvable.")
                     tasksForQueen.forEach { updateTaskStatusInDb(it.id, it.pollenGrainId, it.propertyName, AnalysisStatus.FAILED, "Model file not found") }
-                    continue // Passe à la Reine suivante
+                    continue
                 }
 
                 val isMultimodal = tasksForQueen.any { it.propertyName == "identification" || it.propertyName == "description" }
-                val queenModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = modelName.contains("gemma-3n", ignoreCase = true))
+                val queenModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = modelName, sizeInBytes = modelFile.length(), llmSupportImage = modelName.contains("gemma-3n", ignoreCase = true))
                 val accelerator = gson.fromJson(tasksForQueen.first().modelConfigJson, ModelConfiguration::class.java).accelerator
 
                 val initError = llmHelper.initialize(queenModel, accelerator, isMultimodal)
@@ -8268,6 +8390,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
 
                 try {
                     for (task in tasksForQueen) {
+                        if (!isActive) break
                         val success = runSingleTask(task)
                         if (!success) {
                             Log.w(TAG, "[ORCHESTRATOR] La tâche ${task.id.substring(0,4)} a échoué. La Reine '$modelName' continue avec la tâche suivante.")
@@ -8278,6 +8401,15 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
                     llmHelper.cleanUp()
                 }
             }
+
+            // BOURDON'S NANO INTEGRATION: Gérer la tâche Nano s'il y en a une.
+            tasksByQueen[NANO_QUEEN_NAME]?.firstOrNull()?.let { nanoTask ->
+                if (isActive) {
+                    Log.i(TAG, "[ORCHESTRATOR] Convocation de la Reine Gemini Nano pour la tâche ${nanoTask.id}.")
+                    runSingleTask(nanoTask)
+                }
+            }
+
             Log.i(TAG, "[ORCHESTRATOR] Toutes les Reines ont terminé leur service pour la propriété '$propertyName'.")
         }
     }
@@ -8285,40 +8417,14 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     private suspend fun runSingleTask(task: AnalysisResult): Boolean {
         return try {
             withContext(Dispatchers.Main) { updateTaskStatusInUi(task.id, task.propertyName) { it.copy(status = AnalysisStatus.RUNNING, streamingResponse = "") } }
-
             val config = gson.fromJson(task.modelConfigJson, ModelConfiguration::class.java)
-            val isMultimodalTask = task.propertyName == "identification" || task.propertyName == "description"
-            val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
-            val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
-            val images = if (isMultimodalTask) parentGrain.pollenImagePaths.mapNotNull { BitmapFactory.decodeFile(it) } else emptyList()
 
-            val prompt = when(task.propertyName) {
-                "identification" -> ForgePromptGenerator.generateIdentificationTournamentPrompt(swarmReportJson)
-                else -> {
-                    val card = cardDao.getCardById(parentGrain.forgedCardId ?: -1) ?: throw IllegalStateException("Card not found for refinement")
-                    // Note: La logique de dépendance (ex: allergènes) est simplifiée ici pour la clarté.
-                    // Une implémentation complète la gérerait ici.
-                    ForgePromptGenerator.generatePropertyForgePrompt(
-                        propertyName = task.propertyName, deckName = card.deckName, specificName = card.specificName,
-                        swarmReportJson = swarmReportJson, existingDescription = card.description, dependencyDataJson = null
-                    )
-                }
+            // BOURDON'S NANO INTEGRATION: Aiguillage de la logique d'inférence.
+            if (config.modelName == NANO_QUEEN_NAME) {
+                runNanoInference(task)
+            } else {
+                runMediaPipeInference(task, config)
             }
-
-            llmHelper.resetSession(Model(name=config.modelName, url="", downloadFileName="", sizeInBytes=0), isMultimodalTask, config.temperature, config.topK)
-
-            val fullResponse = suspendCoroutine<String> { continuation ->
-                val responseBuilder = StringBuilder()
-                llmHelper.runInference(prompt, images) { partialResult, done ->
-                    responseBuilder.append(partialResult)
-                    viewModelScope.launch(Dispatchers.Main) { updateTaskStatusInUi(task.id, task.propertyName) { it.copy(streamingResponse = responseBuilder.toString()) } }
-                    if (done && continuation.isActive) continuation.resume(responseBuilder.toString())
-                }
-            }
-
-            val updatedTask = task.copy(status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null)
-            forgeRepository.updateAnalysisResult(updatedTask)
-            withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
             true
         } catch (e: Exception) {
             if (e is CancellationException) {
@@ -8332,6 +8438,69 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    private suspend fun runMediaPipeInference(task: AnalysisResult, config: ModelConfiguration) {
+        val isMultimodalTask = task.propertyName == "identification" || task.propertyName == "description"
+        val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
+        val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
+        val images = if (isMultimodalTask) parentGrain.pollenImagePaths.mapNotNull { BitmapFactory.decodeFile(it) } else emptyList<Bitmap>()
+
+        val prompt = getPromptForTask(task, parentGrain, swarmReportJson)
+        val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(config.modelName)
+        val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = config.modelName, sizeInBytes = modelFile.length())
+        llmHelper.resetSession(queenModel, isMultimodalTask, config.temperature, config.topK)
+
+        val (fullResponse, metrics) = executeStreamingInferenceAndCaptureMetrics(
+            prompt = prompt,
+            images = images
+        ) { streamingText ->
+            updateTaskStatusInUi(task.id, task.propertyName) { it.copy(streamingResponse = streamingText) }
+        }
+
+        val updatedTask = task.copy(
+            status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null,
+            ttftMs = metrics.ttftMs, totalTimeMs = metrics.totalTimeMs, tokensPerSecond = metrics.tokensPerSecond
+        )
+        forgeRepository.updateAnalysisResult(updatedTask)
+        withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
+    }
+
+    private suspend fun runNanoInference(task: AnalysisResult) {
+        if (!NanoLlmHelper.isNanoAvailable(getApplication())) {
+            throw IOException("Gemini Nano is not available.")
+        }
+
+        val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
+        val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
+        val prompt = getPromptForTask(task, parentGrain, swarmReportJson)
+
+        val startTime = System.currentTimeMillis()
+        val fullResponse = NanoLlmHelper.generateResponse(prompt)
+        val endTime = System.currentTimeMillis()
+
+        if (fullResponse.startsWith("Erreur")) throw IOException(fullResponse)
+
+        val updatedTask = task.copy(
+            status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null,
+            totalTimeMs = endTime - startTime
+        )
+        forgeRepository.updateAnalysisResult(updatedTask)
+        withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
+    }
+
+    private suspend fun getPromptForTask(task: AnalysisResult, parentGrain: PollenGrain, swarmReportJson: String): String {
+        return when (task.propertyName) {
+            "identification" -> ForgePromptGenerator.generateIdentificationTournamentPrompt(swarmReportJson)
+            else -> {
+                val card = forgeRepository.getCardForGrain(parentGrain) ?: throw IllegalStateException("Card not found for refinement")
+                ForgePromptGenerator.generatePropertyForgePrompt(
+                    propertyName = task.propertyName, deckName = card.deckName, specificName = card.specificName,
+                    swarmReportJson = swarmReportJson, existingDescription = card.description, dependencyDataJson = null
+                )
+            }
+        }
+    }
+
+
     fun launchFinalJudgment(propertyName: String) {
         judgmentJob?.cancel()
         val proposals = _uiState.value.analysisResults[propertyName]?.filter { it.status == AnalysisStatus.COMPLETED }
@@ -8340,90 +8509,70 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
             return
         }
 
+        val maxResponseLength = 2048
+        val safeProposals = proposals.map {
+            val localRawResponse = it.rawResponse
+            if (localRawResponse != null && localRawResponse.length > maxResponseLength) {
+                Log.w(TAG, "[SAFETY VALVE] Troncation de la réponse anormalement longue de la tâche ${it.id} à $maxResponseLength caractères.")
+                it.copy(rawResponse = localRawResponse.substring(0, maxResponseLength) + " ...TRUNCATED...\"}")
+            } else {
+                it
+            }
+        }
+
         judgmentJob = viewModelScope.launch(Dispatchers.IO) {
-            val prompt = ForgePromptGenerator.generateJudgmentPrompt(propertyName, proposals)
+            val prompt = ForgePromptGenerator.generateJudgmentPrompt(propertyName, safeProposals)
             withContext(Dispatchers.Main) {
                 _uiState.update { it.copy(judgmentState = JudgmentState.InProgress(propertyName, prompt)) }
             }
 
             try {
                 val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                val modelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null) ?: throw IOException("Aucune Reine sélectionnée pour être l'Arbitre.")
-                val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU")!!
-                val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
-                if (!modelFile.exists()) throw IOException("Fichier de la Reine Arbitre introuvable.")
-                val arbiterModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0)
-                val config = ModelConfiguration(modelName, accelerator, 0.1f, 1)
+                val useNano = prefs.getBoolean(ToolsDialogFragment.KEY_USE_GEMINI_NANO, false)
+                val fullResponse: String
 
-                val initError = llmHelper.initialize(arbiterModel, accelerator, false)
-                if(initError != null) throw RuntimeException("Échec de l'initialisation de l'Arbitre: $initError")
+                if (useNano) {
+                    if (!NanoLlmHelper.isNanoAvailable(getApplication())) throw IOException("Gemini Nano is not available.")
+                    fullResponse = NanoLlmHelper.generateResponse(prompt)
+                } else {
+                    val modelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null) ?: throw IOException("Aucune Reine sélectionnée pour être l'Arbitre.")
+                    val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU")!!
+                    val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
+                    if (!modelFile.exists()) throw IOException("Fichier de la Reine Arbitre introuvable.")
+                    val arbiterModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = modelName, sizeInBytes = modelFile.length())
+                    val config = ModelConfiguration(modelName, accelerator, 0.1f, 1)
 
-                val responseBuilder = StringBuilder()
-                llmHelper.runInferenceWithConfig(prompt, emptyList(), config) { partialResult, done ->
-                    responseBuilder.append(partialResult)
-                    viewModelScope.launch(Dispatchers.Main) {
-                        _uiState.update {
-                            val currentState = it.judgmentState
-                            if(currentState is JudgmentState.InProgress) {
-                                it.copy(judgmentState = currentState.copy(streamingResponse = responseBuilder.toString()))
-                            } else it
-                        }
-                    }
+                    val initError = llmHelper.initialize(arbiterModel, accelerator, false)
+                    if(initError != null) throw RuntimeException("Échec de l'initialisation de l'Arbitre: $initError")
 
-                    if (done) {
-                        val arbiterResponse = parseArbiterResponse(responseBuilder.toString(), proposals)
-                        viewModelScope.launch(Dispatchers.Main) {
-                            if (arbiterResponse != null) {
-                                _uiState.update { it.copy(judgmentState = JudgmentState.Complete(propertyName, arbiterResponse.first, arbiterResponse.second)) }
-                            } else {
-                                _uiState.update { it.copy(judgmentState = JudgmentState.Failed(propertyName, "Impossible de parser le verdict de l'Arbitre.")) }
-                            }
-                        }
-                    }
+                    fullResponse = llmHelper.inferenceWithCoroutineAndConfig(prompt, emptyList(), config)
                 }
+
+                val arbiterVerdict = parseIntelligentJson<ArbiterVerdict>(fullResponse) ?: throw IOException("Impossible de parser le verdict de l'Arbitre: $fullResponse")
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(judgmentState = JudgmentState.Complete(propertyName, arbiterVerdict)) }
+                }
+
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _uiState.update { it.copy(judgmentState = JudgmentState.Failed(propertyName, e.message ?: "Erreur inconnue de l'Arbitre."))}
                 }
+            } finally {
+                llmHelper.cleanUp()
             }
-        }
-    }
-
-    private data class ArbiterVerdict(val arbiterReasoning: String, val bestProposal: JsonObject)
-
-    private fun parseArbiterResponse(rawResponse: String, originalProposals: List<AnalysisResult>): Pair<String, AnalysisResult>? {
-        Log.d(TAG, "[ARBITER-PARSE] Tentative de parsing du verdict de l'Arbitre.")
-        val verdict = parseIntelligentJson<ArbiterVerdict>(rawResponse)
-        if (verdict == null) {
-            Log.e(TAG, "[ARBITER-PARSE] ÉCHEC. Le verdict de l'Arbitre est malformé ou vide.")
-            return null
-        }
-
-        Log.d(TAG, "[ARBITER-PARSE] Verdict parsé avec succès. Recherche de la proposition gagnante...")
-        val winningProposal = originalProposals.find {
-            it.rawResponse?.let { originalRaw ->
-                try {
-                    val originalJsonObj = parseIntelligentJson<JsonObject>(originalRaw)
-                    originalJsonObj != null && originalJsonObj == verdict.bestProposal
-                } catch (e: Exception) {
-                    false
-                }
-            } ?: false
-        }
-
-        return if (winningProposal != null) {
-            Log.i(TAG, "[ARBITER-PARSE] SUCCÈS. Proposition gagnante trouvée (Tâche ID: ${winningProposal.id.substring(0,4)}).")
-            Pair(verdict.arbiterReasoning, winningProposal)
-        } else {
-            Log.e(TAG, "[ARBITER-PARSE] ÉCHEC. Aucune proposition originale ne correspond au verdict de l'Arbitre.")
-            null
         }
     }
 
     fun confirmJudgment() {
         val currentState = _uiState.value.judgmentState
-        if (currentState is JudgmentState.Complete) {
-            validateProperty(currentState.winningProposal)
+        if (currentState is JudgmentState.Complete && currentState.verdict.rankedProposals.isNotEmpty()) {
+            val winningTaskId = currentState.verdict.rankedProposals.first().sourceTaskId
+            val winningTask = _uiState.value.analysisResults[currentState.propertyName]?.find { it.id == winningTaskId }
+            if (winningTask != null) {
+                validateProperty(winningTask)
+            } else {
+                Log.e(TAG, "Tâche gagnante avec l'ID $winningTaskId non trouvée!")
+            }
             dismissJudgment()
         }
     }
@@ -8432,10 +8581,19 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         _uiState.update { it.copy(judgmentState = JudgmentState.None) }
     }
 
-    fun cancelCompetition(propertyName: String) {
-        competitionJob?.cancel()
-        Log.i(TAG, "[AUTO-FORGE] Compétition pour '$propertyName' annulée par l'utilisateur.")
+    fun runAnalysisTask(task: AnalysisResult) {
+        Log.i(TAG, "Lancement manuel de la tâche unique ${task.id} pour la propriété '${task.propertyName}'")
+        launchCompetitionExecution(task.propertyName, singleTaskToRun = task)
     }
+
+    fun cancelAnalysisTask(task: AnalysisResult) {
+        Log.i(TAG, "Demande d'annulation pour la tâche ${task.id} (propriété '${task.propertyName}')")
+        competitionJob?.cancel()
+        viewModelScope.launch {
+            updateTaskStatusInDb(task.id, task.pollenGrainId, task.propertyName, AnalysisStatus.CANCELLED, "Cancelled by user")
+        }
+    }
+
 
     fun retryAnalysisTask(task: AnalysisResult) {
         launchCompetitionExecution(task.propertyName, singleTaskToRun = task)
@@ -8527,11 +8685,18 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         if (completedTasks.isEmpty()) return CompetitionSummary(propertyName, emptyList())
 
         val responseGroups = completedTasks.groupBy { task ->
-            extractValueFromResponse(task.rawResponse!!, propertyName)
+            // BOURDON'S FIX: Copie la propriété mutable dans une variable locale immuable avant de l'utiliser.
+            val localRawResponse = task.rawResponse
+            if (localRawResponse.isNullOrBlank()) {
+                ""
+            } else {
+                extractValueFromResponse(localRawResponse, propertyName)
+            }
         }.filterKeys { it.isNotBlank() }
 
         val summaryItems = responseGroups.map { (response, tasks) ->
-            CompetitionSummaryItem(response = response, voteCount = tasks.size, firstValidTask = tasks.first())
+            val queenNames = tasks.map { gson.fromJson(it.modelConfigJson, ModelConfiguration::class.java).modelName }
+            CompetitionSummaryItem(response = response, voteCount = tasks.size, contributingQueens = queenNames, firstValidTask = tasks.first())
         }.sortedByDescending { it.voteCount }
         Log.d(TAG, "[SUMMARY] Création du résumé pour '$propertyName': ${summaryItems.size} proposition(s) unique(s) trouvée(s).")
         return CompetitionSummary(propertyName, summaryItems)
@@ -8604,6 +8769,56 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    // BOURDON'S REFORGE (Performance): Wrapper pour l'inférence avec chronométrage et throttling.
+    private suspend fun executeStreamingInferenceAndCaptureMetrics(
+        prompt: String,
+        images: List<Bitmap>,
+        uiUpdateCallback: (String) -> Unit
+    ): Pair<String, PerformanceMetrics> {
+        return suspendCoroutine { continuation ->
+            val startTime = System.currentTimeMillis()
+            var firstTokenTime: Long? = null
+            val responseBuilder = StringBuilder()
+
+            streamingUpdateJob = viewModelScope.launch(Dispatchers.Main) {
+                while(isActive) {
+                    uiUpdateCallback(responseBuilder.toString())
+                    delay(150) // Limite les mises à jour UI
+                }
+            }
+
+            llmHelper.runInference(prompt, images) { partialResult, done ->
+                if (partialResult.isNotBlank() && firstTokenTime == null) {
+                    firstTokenTime = System.currentTimeMillis()
+                }
+                responseBuilder.append(partialResult)
+
+                if (done) {
+                    streamingUpdateJob?.cancel()
+                    // Dernière mise à jour pour s'assurer que tout le texte est affiché
+                    viewModelScope.launch(Dispatchers.Main) {
+                        uiUpdateCallback(responseBuilder.toString())
+                    }
+
+                    if (continuation.context.isActive) {
+                        val endTime = System.currentTimeMillis()
+                        val totalTimeMs = endTime - startTime
+                        val ttftMs = firstTokenTime?.let { it - startTime }
+                        val totalChars = responseBuilder.length.toFloat()
+                        val tokensPerSecond = if (totalTimeMs > 0) {
+                            (totalChars / 4.0f) / (totalTimeMs / 1000.0f)
+                        } else {
+                            0.0f
+                        }
+                        val metrics = PerformanceMetrics(ttftMs, totalTimeMs, tokensPerSecond)
+                        continuation.resume(Pair(responseBuilder.toString(), metrics))
+                    }
+                }
+            }
+        }
+    }
+
+
     private fun getString(resId: Int, vararg formatArgs: Any): String {
         return getApplication<Application>().getString(resId, *formatArgs)
     }
@@ -8612,10 +8827,10 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         super.onCleared()
         competitionJob?.cancel()
         judgmentJob?.cancel()
+        streamingUpdateJob?.cancel()
         llmHelper.cleanUp()
     }
 }
-// --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
 
@@ -8624,6 +8839,7 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
 
 package be.heyman.android.ai.kikko.forge
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8649,7 +8865,6 @@ class JudgmentDialogFragment : DialogFragment() {
     private lateinit var evidenceContentTextView: TextView
     private lateinit var confirmButton: Button
     private lateinit var overrideButton: Button
-    // BOURDON'S ADDITION: Vues pour l'avertissement de sagesse.
     private lateinit var judgmentWarningCard: MaterialCardView
     private lateinit var judgmentWarningText: TextView
 
@@ -8681,7 +8896,6 @@ class JudgmentDialogFragment : DialogFragment() {
         evidenceContentTextView = view.findViewById(R.id.judgment_evidence_content)
         confirmButton = view.findViewById(R.id.judgment_button_confirm)
         overrideButton = view.findViewById(R.id.judgment_button_override)
-        // BOURDON'S ADDITION: Liaison des nouvelles vues.
         judgmentWarningCard = view.findViewById(R.id.judgment_warning_card)
         judgmentWarningText = view.findViewById(R.id.judgment_warning_text)
     }
@@ -8693,6 +8907,12 @@ class JudgmentDialogFragment : DialogFragment() {
         overrideButton.setOnClickListener {
             viewModel.dismissJudgment()
         }
+    }
+
+    // BOURDON'S CRITICAL FIX: S'assurer que le ViewModel est notifié lorsque le dialogue est fermé par l'utilisateur.
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        viewModel.dismissJudgment()
     }
 
     private fun observeViewModel() {
@@ -8708,8 +8928,13 @@ class JudgmentDialogFragment : DialogFragment() {
                         checkCompetitionStatus(state, judgment.propertyName)
                     }
                     is JudgmentState.Complete -> {
-                        val winningProposalText = "Proposition Gagnante (par ${judgment.winningProposal.modelConfigJson}):\n${judgment.winningProposal.rawResponse}"
-                        streamingResponseTextView.text = "${judgment.arbiterReasoning}\n\n$winningProposalText"
+                        // BOURDON'S DEFINITIVE FIX: La logique est adaptée à la nouvelle structure de données.
+                        val verdict = judgment.verdict
+                        val rankedListText = verdict.rankedProposals.joinToString("\n\n") { proposal ->
+                            "Proposition (Votes: ${proposal.voteCount}):\n'${proposal.value}'\nSynthèse du Raisonnement: ${proposal.reasoningSummary}"
+                        }
+                        val fullText = "Verdict de l'Arbitre:\n${verdict.arbiterReasoning}\n\n--- Propositions Classées ---\n$rankedListText"
+                        streamingResponseTextView.text = fullText
                         confirmButton.isEnabled = true
                         overrideButton.text = getString(R.string.judgment_button_override)
                         checkCompetitionStatus(state, judgment.propertyName)
@@ -8721,14 +8946,13 @@ class JudgmentDialogFragment : DialogFragment() {
                         judgmentWarningCard.isVisible = false
                     }
                     JudgmentState.None -> {
-                        // L'activité gère la fermeture.
+                        // L'activité gère la fermeture, et onDismiss s'assure de la propreté de l'état.
                     }
                 }
             }
         }
     }
 
-    // BOURDON'S ADDITION: Nouvelle fonction pour afficher l'avertissement.
     private fun checkCompetitionStatus(state: ForgeWorkshopUiState, propertyName: String) {
         val allTasks = state.analysisResults[propertyName] ?: emptyList()
         if (allTasks.isEmpty()) {
@@ -8756,6 +8980,101 @@ class JudgmentDialogFragment : DialogFragment() {
 }
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/JudgmentDialogFragment.kt ---
+
+
+--- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/NanoLlmHelper.kt ---
+
+package be.heyman.android.ai.kikko.forge
+
+import android.content.Context
+import android.util.Log
+import com.google.ai.edge.aicore.GenerativeModel
+import com.google.ai.edge.aicore.generationConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+
+/**
+ * BOURDON'S NOTE (REFORGED V4 - STREAMING ENABLED):
+ * Helper pour Gemini Nano, maintenant doté d'une capacité de streaming via Kotlin Flows.
+ */
+object NanoLlmHelper {
+
+    private const val TAG = "NanoLlmHelper"
+    private var generativeModel: GenerativeModel? = null
+
+    /**
+     * Tente d'initialiser le modèle Gemini Nano.
+     */
+    suspend fun isNanoAvailable(context: Context): Boolean = withContext(Dispatchers.IO) {
+        if (generativeModel != null) return@withContext true
+        try {
+            Log.i(TAG, "Tentative d'initialisation de Gemini Nano via le SDK AICore...")
+            generativeModel = GenerativeModel(
+                generationConfig {
+                    this.context = context.applicationContext
+                    temperature = 0.7f
+                    topK = 40
+                }
+            )
+            generativeModel?.prepareInferenceEngine()
+            Log.i(TAG, "SUCCÈS : Gemini Nano est disponible et initialisé.")
+            return@withContext true
+        } catch (e: Throwable) {
+            Log.e(TAG, "ÉCHEC : Gemini Nano n'est pas disponible sur cet appareil. Erreur: ${e.message}", e)
+            generativeModel = null
+            return@withContext false
+        }
+    }
+
+    /**
+     * Génère une réponse complète en une seule fois.
+     */
+    suspend fun generateResponse(prompt: String): String = withContext(Dispatchers.IO) {
+        val model = generativeModel ?: return@withContext "Erreur: Modèle Gemini Nano non initialisé."
+        try {
+            val response = model.generateContent(prompt)
+            return@withContext response.text ?: "La Reine Nano est restée silencieuse."
+        } catch (e: Exception) {
+            Log.e(TAG, "Erreur lors de la génération de la réponse Nano.", e)
+            return@withContext "Erreur de la Reine Nano : ${e.message}"
+        }
+    }
+
+    /**
+     * BOURDON'S ADDITION: Génère une réponse en streaming via un Flow Kotlin.
+     * C'est la fonction que le ViewModel de l'Audience Royale va collecter.
+     */
+    fun generateResponseStream(prompt: String): Flow<String> {
+        val model = generativeModel ?: throw IllegalStateException("Erreur: Modèle Gemini Nano non initialisé pour le streaming.")
+
+        return model.generateContentStream(prompt)
+            .map { response -> response.text ?: "" }
+            .catch { e ->
+                Log.e(TAG, "Erreur lors du streaming de la réponse Nano.", e)
+                emit("Erreur de la Reine Nano : ${e.message}")
+            }
+            .flowOn(Dispatchers.IO)
+    }
+
+    /**
+     * Libère les ressources du modèle.
+     */
+    fun cleanUp() {
+        try {
+            generativeModel?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Erreur lors de la fermeture du modèle Nano.", e)
+        }
+        generativeModel = null
+        Log.i(TAG, "Les ressources de Gemini Nano ont été libérées.")
+    }
+}
+
+--- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/NanoLlmHelper.kt ---
 
 
 --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/PollenGrainAdapter.kt ---
@@ -9154,7 +9473,6 @@ import java.util.UUID
 /**
  * Définit les états possibles pour une seule tâche d'analyse
  * lancée depuis l'Atelier de la Forge.
- * BOURDON'S REFORGE: Ajout des états pour un contrôle granulaire des tâches.
  */
 enum class AnalysisStatus {
     PENDING,   // La tâche est en file d'attente, prête à être lancée.
@@ -9181,15 +9499,7 @@ data class ModelConfiguration(
  * Représente une seule tâche d'analyse (et son résultat) lancée sur une propriété
  * d'un PollenGrain. Cet objet sera stocké dans une nouvelle table de la base de données.
  *
- * @param id Identifiant unique de la tâche d'analyse.
- * @param pollenGrainId L'ID du PollenGrain parent auquel cette tâche est associée.
- * @param propertyName Le nom de la propriété analysée (ex: "description", "stats.lifespan").
- * @param modelConfigJson La configuration du modèle IA utilisée, sérialisée en JSON.
- * @param rawResponse La réponse brute complète retournée par le modèle IA une fois la tâche terminée.
- * @param streamingResponse Le contenu partiel reçu en temps réel (non persisté).
- * @param status L'état actuel de cette tâche d'analyse.
- * @param timestamp L'horodatage de la création de cette tâche.
- * @param errorMessage Un message d'erreur si la tâche a échoué.
+ * BOURDON'S REFORGE: Le modèle inclut maintenant les métriques de performance.
  */
 @Parcelize
 data class AnalysisResult(
@@ -9198,12 +9508,15 @@ data class AnalysisResult(
     val propertyName: String,
     val modelConfigJson: String,
     var rawResponse: String? = null,
-    // BOURDON'S ADDITION: Champ pour le texte en streaming.
-    // Il est transient car il ne vit que dans l'UI et n'est pas sauvegardé en base de données.
     @Transient var streamingResponse: String? = null,
     var status: AnalysisStatus = AnalysisStatus.PENDING,
     val timestamp: Long = System.currentTimeMillis(),
-    var errorMessage: String? = null
+    var errorMessage: String? = null,
+
+    // BOURDON'S REFORGE: Nouveaux champs pour les métriques de performance.
+    var ttftMs: Long? = null, // Time To First Token (Temps de Réflexion)
+    var totalTimeMs: Long? = null, // Temps total de l'inférence
+    var tokensPerSecond: Float? = null // Vitesse de production de la Reine
 ) : Parcelable
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/model/AnalysisResult.kt ---
@@ -9488,65 +9801,60 @@ import kotlinx.coroutines.withContext
 /**
  * DAO (Data Access Object) pour l'entité AnalysisResult.
  * Gère toutes les interactions avec la table "analysis_results".
+ * BOURDON'S REFORGE: Le DAO gère maintenant les nouvelles colonnes de métriques de performance.
  */
 class AnalysisResultDao(context: Context) {
 
-    private val dbHelper = DatabaseHelper.getInstance(context) // BOURDON'S FIX: Assure l'initialisation correcte du singleton
+    private val dbHelper = DatabaseHelper.getInstance(context)
     private val gson = Gson()
 
-    /**
-     * Insère un nouveau résultat d'analyse (ou une tâche) dans la base de données.
-     * @param result L'objet AnalysisResult à insérer.
-     */
     suspend fun insert(result: AnalysisResult) = withContext(Dispatchers.IO) {
         val db = dbHelper.writableDatabase
         val values = ContentValues().apply {
-            put(DatabaseHelper.COLUMN_AR_ID, result.id) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_POLLEN_ID, result.pollenGrainId) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_PROPERTY_NAME, result.propertyName) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_MODEL_CONFIG_JSON, result.modelConfigJson) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_RAW_RESPONSE, result.rawResponse) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_STATUS, result.status.name) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_TIMESTAMP, result.timestamp) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE, result.errorMessage) // BOURDON'S FIX: Références qualifiées
+            put(DatabaseHelper.COLUMN_AR_ID, result.id)
+            put(DatabaseHelper.COLUMN_AR_POLLEN_ID, result.pollenGrainId)
+            put(DatabaseHelper.COLUMN_AR_PROPERTY_NAME, result.propertyName)
+            put(DatabaseHelper.COLUMN_AR_MODEL_CONFIG_JSON, result.modelConfigJson)
+            put(DatabaseHelper.COLUMN_AR_RAW_RESPONSE, result.rawResponse)
+            put(DatabaseHelper.COLUMN_AR_STATUS, result.status.name)
+            put(DatabaseHelper.COLUMN_AR_TIMESTAMP, result.timestamp)
+            put(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE, result.errorMessage)
+            // BOURDON'S REFORGE: Ajout des nouvelles métriques.
+            put(DatabaseHelper.COLUMN_AR_TTFT_MS, result.ttftMs)
+            put(DatabaseHelper.COLUMN_AR_TOTAL_TIME_MS, result.totalTimeMs)
+            put(DatabaseHelper.COLUMN_AR_TOKENS_PER_SEC, result.tokensPerSecond)
         }
-        db.insert(DatabaseHelper.TABLE_ANALYSIS_RESULTS, null, values) // BOURDON'S FIX: Références qualifiées
+        db.insert(DatabaseHelper.TABLE_ANALYSIS_RESULTS, null, values)
     }
 
-    /**
-     * Met à jour un résultat d'analyse existant.
-     * @param result L'objet AnalysisResult avec les nouvelles données.
-     */
     suspend fun update(result: AnalysisResult) = withContext(Dispatchers.IO) {
         val db = dbHelper.writableDatabase
         val values = ContentValues().apply {
-            put(DatabaseHelper.COLUMN_AR_RAW_RESPONSE, result.rawResponse) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_STATUS, result.status.name) // BOURDON'S FIX: Références qualifiées
-            put(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE, result.errorMessage) // BOURDON'S FIX: Références qualifiées
+            put(DatabaseHelper.COLUMN_AR_RAW_RESPONSE, result.rawResponse)
+            put(DatabaseHelper.COLUMN_AR_STATUS, result.status.name)
+            put(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE, result.errorMessage)
+            // BOURDON'S REFORGE: Ajout des nouvelles métriques à la mise à jour.
+            put(DatabaseHelper.COLUMN_AR_TTFT_MS, result.ttftMs)
+            put(DatabaseHelper.COLUMN_AR_TOTAL_TIME_MS, result.totalTimeMs)
+            put(DatabaseHelper.COLUMN_AR_TOKENS_PER_SEC, result.tokensPerSecond)
         }
         db.update(
-            DatabaseHelper.TABLE_ANALYSIS_RESULTS, // BOURDON'S FIX: Références qualifiées
+            DatabaseHelper.TABLE_ANALYSIS_RESULTS,
             values,
-            "${DatabaseHelper.COLUMN_AR_ID} = ?", // BOURDON'S FIX: Références qualifiées
+            "${DatabaseHelper.COLUMN_AR_ID} = ?",
             arrayOf(result.id)
         )
     }
 
-    /**
-     * Récupère tous les résultats d'analyse pour un PollenGrain et une propriété spécifiques.
-     * @param pollenGrainId L'ID du PollenGrain parent.
-     * @param propertyName Le nom de la propriété (ex: "description").
-     * @return Une liste d'AnalysisResults.
-     */
     suspend fun getByPollenGrainIdAndProperty(pollenGrainId: String, propertyName: String): List<AnalysisResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<AnalysisResult>()
         val db = dbHelper.readableDatabase
         val cursor = db.query(
-            DatabaseHelper.TABLE_ANALYSIS_RESULTS, // BOURDON'S FIX: Références qualifiées
+            DatabaseHelper.TABLE_ANALYSIS_RESULTS,
             null, // Toutes les colonnes
-            "${DatabaseHelper.COLUMN_AR_POLLEN_ID} = ? AND ${DatabaseHelper.COLUMN_AR_PROPERTY_NAME} = ?", // BOURDON'S FIX: Références qualifiées
+            "${DatabaseHelper.COLUMN_AR_POLLEN_ID} = ? AND ${DatabaseHelper.COLUMN_AR_PROPERTY_NAME} = ?",
             arrayOf(pollenGrainId, propertyName),
-            null, null, "${DatabaseHelper.COLUMN_AR_TIMESTAMP} ASC" // BOURDON'S FIX: Références qualifiées
+            null, null, "${DatabaseHelper.COLUMN_AR_TIMESTAMP} ASC"
         )
         cursor.use {
             while (it.moveToNext()) {
@@ -9556,10 +9864,6 @@ class AnalysisResultDao(context: Context) {
         return@withContext results
     }
 
-    /**
-     * BOURDON'S FIX: Supprime tous les résultats d'analyse pour une propriété spécifique d'un grain.
-     * C'est la méthode nécessaire pour la fonctionnalité de "relance".
-     */
     suspend fun deleteByPollenGrainIdAndProperty(pollenGrainId: String, propertyName: String) = withContext(Dispatchers.IO) {
         val db = dbHelper.writableDatabase
         val deletedRows = db.delete(
@@ -9571,33 +9875,40 @@ class AnalysisResultDao(context: Context) {
     }
 
 
-    /**
-     * Supprime TOUTES les entrées de la table analysis_results. Action irréversible.
-     */
     suspend fun nuke() = withContext(Dispatchers.IO) {
         val db = dbHelper.writableDatabase
-        db.delete(DatabaseHelper.TABLE_ANALYSIS_RESULTS, null, null) // BOURDON'S FIX: Références qualifiées
+        db.delete(DatabaseHelper.TABLE_ANALYSIS_RESULTS, null, null)
         Log.w("AnalysisResultDao", "NUKE: La table analysis_results a été entièrement vidée.")
     }
 
-    /**
-     * Helper pour convertir une ligne de curseur en un objet AnalysisResult.
-     */
     private fun cursorToAnalysisResult(cursor: Cursor): AnalysisResult {
         fun getStringOrNull(columnName: String): String? {
             val colIndex = cursor.getColumnIndex(columnName)
             return if (colIndex != -1 && !cursor.isNull(colIndex)) cursor.getString(colIndex) else null
         }
+        // BOURDON'S REFORGE: Fonctions helper pour les types numériques nullables.
+        fun getLongOrNull(columnName: String): Long? {
+            val colIndex = cursor.getColumnIndex(columnName)
+            return if (colIndex != -1 && !cursor.isNull(colIndex)) cursor.getLong(colIndex) else null
+        }
+        fun getFloatOrNull(columnName: String): Float? {
+            val colIndex = cursor.getColumnIndex(columnName)
+            return if (colIndex != -1 && !cursor.isNull(colIndex)) cursor.getFloat(colIndex) else null
+        }
 
         return AnalysisResult(
-            id = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_ID)), // BOURDON'S FIX: Références qualifiées
-            pollenGrainId = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_POLLEN_ID)), // BOURDON'S FIX: Références qualifiées
-            propertyName = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_PROPERTY_NAME)), // BOURDON'S FIX: Références qualifiées
-            modelConfigJson = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_MODEL_CONFIG_JSON)), // BOURDON'S FIX: Références qualifiées
-            rawResponse = getStringOrNull(DatabaseHelper.COLUMN_AR_RAW_RESPONSE), // BOURDON'S FIX: Références qualifiées
-            status = AnalysisStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_STATUS))), // BOURDON'S FIX: Références qualifiées
-            timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_TIMESTAMP)), // BOURDON'S FIX: Références qualifiées
-            errorMessage = getStringOrNull(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE) // BOURDON'S FIX: Références qualifiées
+            id = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_ID)),
+            pollenGrainId = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_POLLEN_ID)),
+            propertyName = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_PROPERTY_NAME)),
+            modelConfigJson = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_MODEL_CONFIG_JSON)),
+            rawResponse = getStringOrNull(DatabaseHelper.COLUMN_AR_RAW_RESPONSE),
+            status = AnalysisStatus.valueOf(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_STATUS))),
+            timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_AR_TIMESTAMP)),
+            errorMessage = getStringOrNull(DatabaseHelper.COLUMN_AR_ERROR_MESSAGE),
+            // BOURDON'S REFORGE: Lecture des nouvelles métriques depuis le curseur.
+            ttftMs = getLongOrNull(DatabaseHelper.COLUMN_AR_TTFT_MS),
+            totalTimeMs = getLongOrNull(DatabaseHelper.COLUMN_AR_TOTAL_TIME_MS),
+            tokensPerSecond = getFloatOrNull(DatabaseHelper.COLUMN_AR_TOKENS_PER_SEC)
         )
     }
 }
@@ -9845,8 +10156,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "kikko.db"
-        // BOURDON'S REFORGE: Version incrémentée à 7 pour refléter le nouveau schéma de carte.
-        private const val DATABASE_VERSION = 7 // BOURDON'S FIX: Incrémentation de la version
+        // BOURDON'S REFORGE: Version incrémentée à 8 pour ajouter les métriques de performance.
+        private const val DATABASE_VERSION = 8
 
         // --- Table "knowledge_cards" Definition ---
         const val TABLE_CARDS = "knowledge_cards"
@@ -9860,10 +10171,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COLUMN_CARD_STATS_JSON = "stats"
         const val COLUMN_CARD_QUIZ_JSON = "quiz"
         const val COLUMN_CARD_TRANSLATIONS_JSON = "translations"
-        // BOURDON'S REFORGE: Ajout des nouveaux champs pour les decks biologiques.
         const val COLUMN_CARD_SCIENTIFIC_NAME = "scientificName"
         const val COLUMN_CARD_VERNACULAR_NAME = "vernacularName"
-        // BOURDON'S FIX: NOUVEAUX CHAMPS ALLERGENS ET INGREDIENTS
         const val COLUMN_CARD_ALLERGENS_JSON = "allergens"
         const val COLUMN_CARD_INGREDIENTS_JSON = "ingredients"
 
@@ -9876,14 +10185,12 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_CARD_IMAGE_PATH TEXT, " +
                     "$COLUMN_CARD_CONFIDENCE REAL, " +
                     "$COLUMN_CARD_DESCRIPTION TEXT, " +
-                    // BOURDON'S REFORGE: Ajout des nouvelles colonnes au schéma.
                     "$COLUMN_CARD_SCIENTIFIC_NAME TEXT, " +
                     "$COLUMN_CARD_VERNACULAR_NAME TEXT, " +
                     "$COLUMN_CARD_REASONING_JSON TEXT, " +
                     "$COLUMN_CARD_STATS_JSON TEXT, " +
                     "$COLUMN_CARD_QUIZ_JSON TEXT, " +
                     "$COLUMN_CARD_TRANSLATIONS_JSON TEXT, " +
-                    // BOURDON'S FIX: Ajout des nouvelles colonnes à la clause CREATE TABLE.
                     "$COLUMN_CARD_ALLERGENS_JSON TEXT, " +
                     "$COLUMN_CARD_INGREDIENTS_JSON TEXT);"
 
@@ -9908,7 +10215,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_POLLEN_FORGED_CARD_ID INTEGER, " +
                     "FOREIGN KEY($COLUMN_POLLEN_FORGED_CARD_ID) REFERENCES $TABLE_CARDS($COLUMN_CARD_ID));"
 
-        // --- Table "analysis_results" Definition (inchangée) ---
+        // --- Table "analysis_results" Definition ---
         const val TABLE_ANALYSIS_RESULTS = "analysis_results"
         const val COLUMN_AR_ID = "id"
         const val COLUMN_AR_POLLEN_ID = "pollen_grain_id"
@@ -9918,6 +10225,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COLUMN_AR_STATUS = "status"
         const val COLUMN_AR_TIMESTAMP = "timestamp"
         const val COLUMN_AR_ERROR_MESSAGE = "error_message"
+        // BOURDON'S REFORGE: Ajout des nouvelles colonnes pour les métriques de performance.
+        const val COLUMN_AR_TTFT_MS = "ttft_ms"
+        const val COLUMN_AR_TOTAL_TIME_MS = "total_time_ms"
+        const val COLUMN_AR_TOKENS_PER_SEC = "tokens_per_second"
+
 
         private const val TABLE_ANALYSIS_RESULTS_CREATE =
             "CREATE TABLE $TABLE_ANALYSIS_RESULTS (" +
@@ -9929,6 +10241,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     "$COLUMN_AR_STATUS TEXT NOT NULL, " +
                     "$COLUMN_AR_TIMESTAMP INTEGER NOT NULL, " +
                     "$COLUMN_AR_ERROR_MESSAGE TEXT, " +
+                    // BOURDON'S REFORGE: Ajout des nouvelles colonnes au schéma de création.
+                    "$COLUMN_AR_TTFT_MS INTEGER, " +
+                    "$COLUMN_AR_TOTAL_TIME_MS INTEGER, " +
+                    "$COLUMN_AR_TOKENS_PER_SEC REAL, " +
                     "FOREIGN KEY($COLUMN_AR_POLLEN_ID) REFERENCES $TABLE_POLLEN_GRAINS($COLUMN_POLLEN_ID) ON DELETE CASCADE);"
 
 
@@ -10579,26 +10895,32 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import be.heyman.android.ai.kikko.R
+import be.heyman.android.ai.kikko.TtsService
 import be.heyman.android.ai.kikko.ToolsDialogFragment
+import be.heyman.android.ai.kikko.forge.NanoLlmHelper
 import be.heyman.android.ai.kikko.model.PollenGrain as DbPollenGrain
 import be.heyman.android.ai.kikko.model.PollenStatus
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
-// BOURDON'S FIX: La référence à l'ancien IdentificationWorker est supprimée.
-// import be.heyman.android.ai.kikko.worker.IdentificationWorker
-// BOURDON'S FIX: La nouvelle référence pointe vers le worker unifié.
 import be.heyman.android.ai.kikko.worker.ForgeWorker
 import com.google.gson.Gson
+import com.google.mlkit.genai.imagedescription.ImageDescription
+import com.google.mlkit.genai.imagedescription.ImageDescriberOptions
+import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.Locale
 import java.util.UUID
 
 enum class HarvestStep {
@@ -10632,10 +10954,12 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
     private val gson = Gson()
     private val workManager = WorkManager.getInstance(application)
 
+    private var nanoStreamingJob: Job? = null
+
 
     fun startInteraction() {
         if (_uiState.value.currentStep != HarvestStep.IDLE) return
-        Log.d(TAG, "[FLUX] Démarrage de l'interaction. Passage à BOURDON_INTRO.")
+        Log.i(TAG, "[FLUX] Démarrage de l'interaction. Passage à BOURDON_INTRO.")
         _uiState.update {
             it.copy(
                 currentStep = HarvestStep.BOURDON_INTRO,
@@ -10650,7 +10974,7 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
                 HarvestStep.BOURDON_INTRO -> HarvestStep.USER_CAPTURING_POLLEN
                 else -> it.currentStep
             }
-            Log.d(TAG, "[FLUX] Le Bourdon a fini de parler. Passage à l'état: $nextStep")
+            Log.i(TAG, "[FLUX] Le Bourdon a fini de parler (message de bienvenue). Passage à l'état: $nextStep")
             it.copy(currentStep = nextStep, bourdonMessage = null)
         }
     }
@@ -10660,14 +10984,26 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             Log.w(TAG, "[ANALYSE] Tentative de capture alors que le maximum (4) est atteint. Ignoré.")
             return
         }
+        nanoStreamingJob?.cancel()
+        TtsService.stopAndClearQueue()
 
-        val newCapture = PollenCapture(bitmap = bitmap)
-        _uiState.update { it.copy(capturedPollen = it.capturedPollen + newCapture) }
-        Log.i(TAG, "[ANALYSE] Nouvelle capture ajoutée (ID: ${newCapture.id}). Lancement de l'analyse par la PollenForge.")
+        val bitmapForUi = bitmap
+        val newCapture = PollenCapture(bitmap = bitmapForUi)
+        _uiState.update { it.copy(capturedPollen = it.capturedPollen + newCapture, bourdonMessage = "Analyse de l'essaim en cours...") }
+        Log.i(TAG, "[ANALYSE] Nouvelle capture ajoutée (ID: ${newCapture.id}). Lancement des analyses parallèles sur des copies distinctes.")
 
+        val bitmapConfig = bitmap.config ?: Bitmap.Config.ARGB_8888
+
+        // BOURDON'S CRITICAL FIX: Chaque coroutine reçoit SA PROPRE COPIE du bitmap pour éviter les conflits de recyclage.
+        val bitmapForNano = bitmap.copy(bitmapConfig, true)
         viewModelScope.launch {
-            val (report, jsonReport) = pollenForge.processImage(bitmap)
-            Log.i(TAG, "[ANALYSE] Analyse terminée pour la capture ID: ${newCapture.id}.")
+            streamNanoDescription(bitmapForNano)
+        }
+
+        val bitmapForForge = bitmap.copy(bitmapConfig, true)
+        viewModelScope.launch {
+            val (report, jsonReport) = pollenForge.processImage(bitmapForForge)
+            Log.i(TAG, "[ANALYSE] Analyse de l'essaim terminée pour la capture ID: ${newCapture.id}.")
 
             _uiState.update { currentState ->
                 val updatedList = currentState.capturedPollen.map { capture ->
@@ -10682,7 +11018,7 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
                 val shouldStopCapture = updatedList.size >= 4 && currentState.currentStep == HarvestStep.USER_CAPTURING_POLLEN
 
                 if (shouldStopCapture) {
-                    Log.d(TAG, "[FLUX] Maximum de captures atteint. Passage à AWAITING_FINAL_CHOICE.")
+                    Log.i(TAG, "[FLUX] Maximum de captures atteint. Passage à AWAITING_FINAL_CHOICE.")
                     currentState.copy(
                         capturedPollen = updatedList,
                         currentStep = HarvestStep.AWAITING_FINAL_CHOICE,
@@ -10699,8 +11035,56 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private fun streamNanoDescription(bitmap: Bitmap) {
+        nanoStreamingJob = viewModelScope.launch {
+            val fullResponse = StringBuilder()
+
+            _uiState.update { it.copy(bourdonMessage = "L'Abeille Scribe réfléchit...") }
+            Log.i(TAG, "[NANO STREAM] Lancement de la description d'image.")
+
+            val imageDescriber = ImageDescription.getClient(ImageDescriberOptions.builder(getApplication()).build())
+            val request = ImageDescriptionRequest.builder(bitmap).build()
+
+            try {
+                imageDescriber.runInference(request) { chunk ->
+                    fullResponse.append(chunk)
+                }.await()
+
+                val finalText = fullResponse.toString().trim()
+                if (finalText.isNotBlank()) {
+                    Log.i(TAG, "[NANO STREAM] Génération terminée. Affichage du texte complet et lancement du TTS.")
+                    _uiState.update { it.copy(bourdonMessage = finalText) }
+                    TtsService.speak(finalText, Locale.getDefault()) {
+                        Log.i(TAG, "[NANO STREAM] TTS terminé. Lancement du timer de 4 secondes.")
+                        viewModelScope.launch {
+                            delay(4000)
+                            if (_uiState.value.bourdonMessage == finalText) {
+                                Log.i(TAG, "[NANO STREAM] Timer de 4s terminé. Masquage de la bulle.")
+                                _uiState.update { it.copy(bourdonMessage = null) }
+                            } else {
+                                Log.w(TAG, "[NANO STREAM] Timer de 4s terminé, mais le message a changé. La bulle ne sera pas masquée.")
+                            }
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "[NANO STREAM] Génération terminée mais la réponse est vide.")
+                    _uiState.update { it.copy(bourdonMessage = null) }
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Erreur de streaming de la description d'image", e)
+                _uiState.update { it.copy(bourdonMessage = "L'Abeille Scribe a eu un problème : ${e.message}") }
+            } finally {
+                imageDescriber.close()
+            }
+        }
+    }
+
+
     fun onStopHarvesting() {
-        Log.d(TAG, "[FLUX] L'utilisateur a terminé la récolte manuellement. Passage à AWAITING_FINAL_CHOICE.")
+        Log.i(TAG, "[FLUX] L'utilisateur a terminé la récolte manuellement. Passage à AWAITING_FINAL_CHOICE.")
+        nanoStreamingJob?.cancel()
+        TtsService.stopAndClearQueue()
         _uiState.update {
             it.copy(
                 currentStep = HarvestStep.AWAITING_FINAL_CHOICE,
@@ -10711,6 +11095,8 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun onRestartHarvest() {
         Log.i(TAG, "[FLUX] Réinitialisation de la session de récolte.")
+        nanoStreamingJob?.cancel()
+        TtsService.stopAndClearQueue()
         _uiState.value = ForgeLiveUiState()
         startInteraction()
     }
@@ -10720,7 +11106,7 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
         if (currentState.capturedPollen.isEmpty() || currentState.currentStep == HarvestStep.SAVING) return
 
         viewModelScope.launch {
-            Log.d(TAG, "[FLUX] Envoi du pollen à la Ruche. Passage à SAVING.")
+            Log.i(TAG, "[FLUX] Envoi du pollen à la Ruche. Passage à SAVING.")
             _uiState.update { it.copy(currentStep = HarvestStep.SAVING, bourdonMessage = getApplication<Application>().getString(R.string.bourdon_save_pollen)) }
 
             val savedImagePaths = savePollenImages(currentState.capturedPollen)
@@ -10745,7 +11131,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
             pollenGrainDao.insert(pollenToSave)
             Log.i(TAG, "Nouveau PollenGrain (ID: ${pollenToSave.id}) inséré dans la base de données.")
 
-            // BOURDON'S FIX: Appel à la nouvelle fonction qui utilise le bon worker.
             launchForgeWorker()
 
             _uiState.update { it.copy(currentStep = HarvestStep.SAVED, bourdonMessage = getApplication<Application>().getString(R.string.bourdon_save_success)) }
@@ -10755,7 +11140,6 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // BOURDON'S FIX: La fonction est renommée et corrigée pour utiliser ForgeWorker.
     private fun launchForgeWorker() {
         Log.d(TAG, "Lancement du ForgeWorker.")
 
@@ -10806,17 +11190,23 @@ class ForgeLiveViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun aggregateJsonReports(captures: List<PollenCapture>): String {
         val allReports = captures.mapNotNull { capture ->
-            capture.jsonReport?.let { gson.fromJson(it, Map::class.java) }
+            capture.jsonReport?.let {
+                if (it.contains("nano_image_description")) {
+                    Log.i(TAG, "[AGGREGATE] La description de l'Abeille Scribe a été trouvée dans le rapport JSON de la capture ${capture.id}.")
+                }
+                gson.fromJson(it, Map::class.java)
+            }
         }
         return gson.toJson(mapOf("reports" to allReports))
     }
 
     fun reset() {
         Log.i(TAG, "ViewModel réinitialisé à son état initial.")
+        nanoStreamingJob?.cancel()
+        TtsService.stopAndClearQueue()
         _uiState.value = ForgeLiveUiState()
     }
 }
-// --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/ForgeLiveViewModel.kt ---
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/ForgeLiveViewModel.kt ---
 
@@ -11086,13 +11476,21 @@ data class PollenCapture(
 
 --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenForge.kt ---
 
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenForge.kt ---
+
 package be.heyman.android.ai.kikko.pollen
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import com.google.android.gms.tasks.Task
 import com.google.gson.GsonBuilder
 import com.google.mlkit.common.model.LocalModel
+import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.imagedescription.ImageDescription
+import com.google.mlkit.genai.imagedescription.ImageDescriber
+import com.google.mlkit.genai.imagedescription.ImageDescriberOptions
+import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -11104,28 +11502,31 @@ import com.google.mlkit.vision.label.custom.CustomImageLabelerOptions
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.tasks.await
 import java.io.Closeable
+import java.io.IOException
 
 /**
- * Orchestre une analyse multi-niveaux avec une escouade complète de classifieurs spécialisés,
- * un OCR et un scanner de codes-barres.
- * BOURDON'S REFACTOR: Cette version est maintenant robuste et charge les modèles séquentiellement.
+ * Orchestre une analyse multi-niveaux avec une escouade complète de classifieurs spécialisés.
+ * BOURDON'S REFORGE V7: Restauration de l'exécution parallèle avec isolation stricte des ressources.
  */
 class PollenForge(private val context: Context) {
 
     private val TAG = "PollenForge"
 
     private val specialistModelPaths = mapOf(
-        "Défaut ML Kit" to "DEFAULT", // Cas spécial pour le modèle par défaut
+        "Défaut ML Kit" to "DEFAULT",
         "Labeler Objet" to "object_labeler.tflite",
         "Plantes" to "aiy-tflite-vision-classifier-plants-v1-v3.tflite",
         "Insectes" to "aiy-tflite-vision-classifier-insects-v1-v3.tflite",
@@ -11151,68 +11552,88 @@ class PollenForge(private val context: Context) {
     }
 
     suspend fun processImage(bitmap: Bitmap): Pair<PollenAnalysis, String> = coroutineScope {
-        val highResImage = InputImage.fromBitmap(bitmap, 0)
-        var objectDetector: com.google.mlkit.vision.objects.ObjectDetector? = null
-        var textRecognizer: com.google.mlkit.vision.text.TextRecognizer? = null
-        var barcodeScanner: BarcodeScanner? = null
         val closableClients = mutableListOf<Closeable>()
+        var imageDescriber: ImageDescriber? = null
 
         try {
-            // --- Étape 1: Détection d'objets ---
+            Log.d(TAG, "Lancement de l'essaim d'analyse en PARALLÈLE avec isolation des ressources...")
+
             val objectDetectorOptions = ObjectDetectorOptions.Builder()
                 .setDetectorMode(ObjectDetectorOptions.SINGLE_IMAGE_MODE)
                 .enableMultipleObjects().enableClassification().build()
-            objectDetector = ObjectDetection.getClient(objectDetectorOptions)
-            closableClients.add(objectDetector)
-            val detectedObjects = objectDetector.process(highResImage).await()
-            Log.d(TAG, "Phase 1: ${detectedObjects.size} objets détectés.")
+            val objectDetector = ObjectDetection.getClient(objectDetectorOptions).also { closableClients.add(it) }
+            val objectTask = async(Dispatchers.IO) {
+                try { objectDetector.process(InputImage.fromBitmap(bitmap, 0)).await() }
+                catch (e: Exception) { Log.e(TAG, "Object Detection failed", e); emptyList<DetectedObject>() }
+            }
 
-            // --- Étape 2: Analyse Globale (Spécialistes Séquentiels + OCR + Barcode) ---
-            val globalSpecialistResults = mutableListOf<Pair<String, List<ImageLabel>>>()
-            for ((name, path) in specialistModelPaths) {
-                Log.d(TAG, "Analyse globale avec le spécialiste: $name")
-                val labeler = createImageLabeler(path)
+            val textRecognizer = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build()).also { closableClients.add(it) }
+            val ocrTask = async(Dispatchers.IO) {
+                try { textRecognizer.process(InputImage.fromBitmap(bitmap, 0)).await() }
+                catch (e: Exception) { Log.e(TAG, "OCR failed", e); null }
+            }
+
+            val barcodeScanner = BarcodeScanning.getClient().also { closableClients.add(it) }
+            val barcodeTask = async(Dispatchers.IO) {
+                try { barcodeScanner.process(InputImage.fromBitmap(bitmap, 0)).await() }
+                catch (e: Exception) { Log.e(TAG, "Barcode Scanning failed", e); emptyList<Barcode>() }
+            }
+
+            imageDescriber = ImageDescription.getClient(ImageDescriberOptions.builder(context).build())
+            val descriptionTask = async(Dispatchers.IO) {
                 try {
-                    val labels = labeler.process(highResImage).await()
-                    globalSpecialistResults.add(Pair(name, labels))
-                } finally {
-                    labeler.close() // Libère les ressources immédiatement
+                    val status = imageDescriber!!.checkFeatureStatus().await()
+                    if (status == FeatureStatus.AVAILABLE || status == FeatureStatus.DOWNLOADABLE || status == FeatureStatus.DOWNLOADING) {
+                        val request = ImageDescriptionRequest.builder(bitmap).build()
+                        imageDescriber!!.runInference(request).await().description
+                    } else { "Description non disponible." }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Image Description failed", e)
+                    "Erreur de description."
                 }
             }
 
-            textRecognizer = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
-            closableClients.add(textRecognizer)
-            barcodeScanner = BarcodeScanning.getClient()
-            closableClients.add(barcodeScanner)
+            val specialistTasks = specialistModelPaths.map { (name, path) ->
+                async(Dispatchers.IO) {
+                    val labeler = createImageLabeler(path)
+                    try {
+                        // BOURDON'S CRITICAL FIX: Création d'une InputImage fraîche pour ce spécialiste.
+                        val labels = labeler.process(InputImage.fromBitmap(bitmap, 0)).await()
+                        Pair(name, labels)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Classifier '$name' failed", e)
+                        Pair(name, emptyList<ImageLabel>())
+                    } finally {
+                        labeler.close()
+                    }
+                }
+            }
 
-            val globalOcrResult = textRecognizer.process(highResImage).await()
-            val barcodeResults = barcodeScanner.process(highResImage).await()
-            Log.d(TAG, "Phase 2: Analyse globale terminée.")
+            val detectedObjects = objectTask.await()
+            val globalOcrResult = ocrTask.await()
+            val barcodeResults = barcodeTask.await()
+            val nanoDescription = descriptionTask.await()
+            val globalSpecialistResults = awaitAll(*specialistTasks.toTypedArray())
+            Log.d(TAG, "Toutes les analyses de l'essaim sont terminées.")
 
-            // --- Étape 3: Analyse par Objet (reportée pour la stabilité) ---
-            // Pour l'instant, on se concentre sur la stabilisation de l'analyse globale.
-            Log.d(TAG, "Phase 3: Analyse par objet désactivée pour cette version.")
-            val analyzedObjectsResults = emptyList<AnalyzedObject>()
-
-            // --- Étape 4: Construction des rapports ---
             val pollenAnalysisReport = PollenAnalysis(
-                imageWidth = bitmap.width,
-                imageHeight = bitmap.height,
+                imageWidth = bitmap.width, imageHeight = bitmap.height,
                 globalAnalysis = globalSpecialistResults.map { SpecialistReport(it.first, it.second.toClassifierResults()) }.filter { it.results.isNotEmpty() },
-                analyzedObjects = analyzedObjectsResults,
-                structuredOcrResult = globalOcrResult.toStructuredResult(),
-                barcodeResults = barcodeResults.map { BarcodeResult(it.displayValue, it.format.toString()) }
+                analyzedObjects = emptyList(),
+                structuredOcrResult = globalOcrResult?.toStructuredResult() ?: emptyList(),
+                barcodeResults = barcodeResults.map { BarcodeResult(it.displayValue, it.format.toString()) },
+                nanoImageDescription = nanoDescription
             )
 
-            val jsonReport = generateJsonReport(bitmap, barcodeResults, globalOcrResult, detectedObjects, globalSpecialistResults)
+            val jsonReport = generateJsonReport(bitmap, barcodeResults, globalOcrResult, detectedObjects, globalSpecialistResults, nanoDescription)
 
             return@coroutineScope Pair(pollenAnalysisReport, jsonReport)
 
         } finally {
-            // Assure que tous les clients principaux sont fermés
             closableClients.forEach {
                 try { it.close() } catch (e: Exception) { Log.e(TAG, "Erreur lors de la fermeture d'un client ML Kit.", e) }
             }
+            imageDescriber?.close()
         }
     }
 
@@ -11244,16 +11665,18 @@ class PollenForge(private val context: Context) {
     private fun generateJsonReport(
         bitmap: Bitmap,
         barcodes: List<Barcode>,
-        ocrResult: Text,
+        ocrResult: Text?,
         detectedObjects: List<DetectedObject>,
-        specialistResults: List<Pair<String, List<ImageLabel>>>
+        specialistResults: List<Pair<String, List<ImageLabel>>>,
+        nanoDescription: String?
     ): String {
         val gson = GsonBuilder().setPrettyPrinting().create()
         val reportMap = mutableMapOf<String, Any>()
 
         reportMap["image_dimensions"] = mapOf("width" to bitmap.width, "height" to bitmap.height)
-        reportMap["barcode_scanner_results"] = barcodes.map { mapOf("format" to it.format, "raw_value" to it.rawValue) }
-        reportMap["ocr_results"] = mapOf("full_text" to ocrResult.text)
+        reportMap["barcode_scanner_results"] = barcodes.map { mapOf("format" to it.format.toString(), "raw_value" to it.rawValue) }
+        reportMap["ocr_results"] = mapOf("full_text" to (ocrResult?.text ?: ""))
+        reportMap["nano_image_description"] = nanoDescription ?: ""
         reportMap["object_detection_results"] = detectedObjects.map { obj ->
             mapOf(
                 "labels" to obj.labels.map { label -> mapOf("text" to label.text, "confidence" to label.confidence) }
@@ -11580,6 +12003,7 @@ data class OcrBlock(
 
 /**
  * Le rapport d'analyse final et complet de la Forge.
+ * BOURDON'S REFORGE: Ajout d'un champ pour la description générée par Nano (via ML Kit).
  */
 data class PollenAnalysis(
     val imageWidth: Int,
@@ -11588,7 +12012,8 @@ data class PollenAnalysis(
     val analyzedObjects: List<AnalyzedObject>, // Analyse par objet
     // BOURDON'S FIX: Remplacement de la chaîne de caractères simple par une structure hiérarchique.
     val structuredOcrResult: List<OcrBlock>,
-    val barcodeResults: List<BarcodeResult>
+    val barcodeResults: List<BarcodeResult>,
+    val nanoImageDescription: String? = null // NOUVEAU CHAMP
 )
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenReport.kt ---
@@ -12497,13 +12922,12 @@ object PromptManager {
             TASK: Translate ALL text content within the JSON to %1${'$'}s.
             - Maintain the EXACT JSON structure. Do NOT add or remove fields.
             - Only translate the string values. Do NOT translate field names.
-            - Do NOT include any comments or extra text outside the JSON.
+            - DO NOT include any comments or extra text outside the JSON.
             **IMPORTANT**: Never use double quotes `"` inside a JSON string value. Use single quotes `'` instead.
             Original JSON content to translate:
             %2${'$'}s
             """.trimIndent(),
 
-            // BOURDON'S CRITICAL FIX: Restauration du format de sortie correct.
             "clash_verdict" to """
             ROLE: You are a versatile AI Judge for the Saga Arena.
             CONTEXT: You must judge a duel based on the `[CLASH_QUESTION]`. You have data for two contestants. Your verdict MUST be based solely on the provided data.
@@ -12524,18 +12948,34 @@ object PromptManager {
             [CONTESTANT_2_STATS_JSON]: %6${'$'}s
             """.trimIndent(),
 
+            // BOURDON'S REFORGE: Le nouveau décret pour un Arbitre plus intelligent et robuste.
             "forge_judgment_arbiter" to """
-            ROLE: You are the impartial AI Arbiter of the Forge. Your role is to synthesize and judge, not to create new information.
-            CONTEXT: A competition was held among several AI Queens to determine the value for the property '%1${'$'}s'. You are provided with a JSON array of their proposals.
+            ROLE: You are the impartial AI Arbiter of the Forge. Your role is to synthesize and rank, not to choose a single winner.
+            CONTEXT: A competition was held among several AI Queens to determine the value for the property '%1${'$'}s'. You are provided with a JSON array of their proposals. Each proposal has a unique `id`.
             TASK:
-            1.  Analyze all proposals in the `[PROPOSALS_JSON]` array.
-            2.  Evaluate them based on these criteria: Correct JSON formatting, completeness, and logical consistency.
-            3.  Select the SINGLE BEST proposal.
-            OUTPUT FORMAT: Your response MUST be a single, valid JSON object and nothing else.
+            1. Analyze all proposals in the `[PROPOSALS_JSON]` array.
+            2. Extract the main value (e.g., the `specificName`, the `description` text) from the `rawResponse` of EACH proposal.
+            3. Group identical or near-identical values together and count the "votes" for each unique value.
+            4. Select up to the top 3 most popular, distinct values.
+            5. For each of these top values, provide a brief synthesis of the reasoning presented by the AIs that proposed it.
+            OUTPUT FORMAT: Your response MUST be a single, valid JSON object containing a `rankedProposals` array.
             **IMPORTANT**: Never use double quotes `"` inside a JSON string value. Use single quotes `'` instead.
             {
-              "arbiterReasoning": "Your brief justification for selecting the winning proposal.",
-              "bestProposal": { ... The complete, unmodified JSON object from the `rawResponse` of the winning proposal ... }
+              "arbiterReasoning": "A very brief, one-sentence summary of the competition's outcome.",
+              "rankedProposals": [
+                {
+                  "value": "The first most popular value (e.g., 'Dandelion').",
+                  "voteCount": 3,
+                  "reasoningSummary": "A brief summary of why the AIs chose this value.",
+                  "sourceTaskId": "The `id` of the FIRST proposal in the input that suggested this value."
+                },
+                {
+                  "value": "The second most popular value (e.g., 'Taraxacum officinale').",
+                  "voteCount": 2,
+                  "reasoningSummary": "A brief summary for this second choice.",
+                  "sourceTaskId": "The `id` of the FIRST proposal for this second value."
+                }
+              ]
             }
             --- START OF EVIDENCE ---
             [PROPOSALS_JSON]:
@@ -13043,6 +13483,7 @@ import be.heyman.android.ai.kikko.data.Model
 import be.heyman.android.ai.kikko.SttVoskService
 import be.heyman.android.ai.kikko.TtsService
 import be.heyman.android.ai.kikko.VoskStatus
+import be.heyman.android.ai.kikko.util.QueenResourceLock
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.AppBarLayout
 import kotlinx.coroutines.launch
@@ -13121,6 +13562,28 @@ class RoyalAudienceActivity : AppCompatActivity(),
         super.onStart()
         initializePlayer()
     }
+
+    override fun onResume() {
+        super.onResume()
+        // BOURDON'S STRATEGIC FIX: Acquisition du Verrou de Souveraineté.
+        if (!QueenResourceLock.acquire()) {
+            Toast.makeText(this, "La Reine est occupée par la Forge. Veuillez patienter.", Toast.LENGTH_LONG).show()
+            // Idéalement, griser l'UI ou afficher un indicateur.
+        } else {
+            Log.i(TAG, "Verrou de Souveraineté acquis. La Reine est réservée pour l'Audience.")
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "⏸️ Audience mise en pause.")
+        // BOURDON'S STRATEGIC FIX: Libération du Verrou de Souveraineté.
+        QueenResourceLock.release()
+        Log.i(TAG, "Verrou de Souveraineté libéré. La Reine est disponible pour la Forge.")
+        SttVoskService.stopListening()
+        TtsService.stopAndClearQueue()
+    }
+
 
     override fun onStop() {
         super.onStop()
@@ -13374,13 +13837,6 @@ class RoyalAudienceActivity : AppCompatActivity(),
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        Log.d(TAG, "⏸️ Audience mise en pause.")
-        SttVoskService.stopListening()
-        TtsService.stopAndClearQueue()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "💥 L'audience est terminée. Libération des ressources.")
@@ -13562,675 +14018,284 @@ class RoyalAudienceAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
 --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/royal_audience/RoyalAudienceViewModel.kt ---
 
-// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
-package be.heyman.android.ai.kikko.forge
+package be.heyman.android.ai.kikko.royal_audience
 
 import android.app.Application
 import android.content.Context
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import be.heyman.android.ai.kikko.GameConstants
 import be.heyman.android.ai.kikko.KikkoApplication
 import be.heyman.android.ai.kikko.R
+import be.heyman.android.ai.kikko.TtsService
 import be.heyman.android.ai.kikko.ToolsDialogFragment
 import be.heyman.android.ai.kikko.data.Model
-import be.heyman.android.ai.kikko.model.AnalysisResult
-import be.heyman.android.ai.kikko.model.AnalysisStatus
+import be.heyman.android.ai.kikko.forge.ForgeLlmHelper
+import be.heyman.android.ai.kikko.forge.ForgeWorkshopViewModel
+import be.heyman.android.ai.kikko.forge.NanoLlmHelper
 import be.heyman.android.ai.kikko.model.KnowledgeCard
-import be.heyman.android.ai.kikko.model.ModelConfiguration
-import be.heyman.android.ai.kikko.model.PollenGrain
-import be.heyman.android.ai.kikko.model.PollenStatus
-import be.heyman.android.ai.kikko.model.Reasoning
-import be.heyman.android.ai.kikko.persistence.PollenGrainDao
+import be.heyman.android.ai.kikko.persistence.CardDao
 import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.IOException
 import java.util.Locale
-import java.util.concurrent.CancellationException
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
-data class CompetitionSummaryItem(
-    val response: String,
-    val voteCount: Int,
-    val firstValidTask: AnalysisResult
+data class AudienceUiState(
+    val isLoading: Boolean = false,
+    val messages: List<ChatMessage> = emptyList(),
+    val availableModels: List<File> = emptyList(),
+    val selectedModelName: String? = null,
+    val audienceSettings: AudienceSettings = AudienceSettings(temperature = 0.2f, topK = 40)
 )
 
-data class CompetitionSummary(
-    val propertyName: String,
-    val items: List<CompetitionSummaryItem>
-)
+class RoyalAudienceViewModel(
+    application: Application,
+    private val savedStateHandle: SavedStateHandle
+) : AndroidViewModel(application) {
 
-sealed class JudgmentState {
-    data object None : JudgmentState()
-    data class InProgress(val propertyName: String, val prompt: String, val streamingResponse: String = "") : JudgmentState()
-    data class Complete(val propertyName: String, val arbiterReasoning: String, val winningProposal: AnalysisResult) : JudgmentState()
-    data class Failed(val propertyName: String, val error: String) : JudgmentState()
-}
+    private val TAG = "RoyalAudienceViewModel"
 
-data class ForgeWorkshopUiState(
-    val isLoading: Boolean = true,
-    val workshopGrains: List<PollenGrain> = emptyList(),
-    val selectedGrain: PollenGrain? = null,
-    val selectedCard: KnowledgeCard? = null,
-    val analysisResults: Map<String, List<AnalysisResult>> = emptyMap(),
-    val competitionSummaries: Map<String, CompetitionSummary> = emptyMap(),
-    val judgmentState: JudgmentState = JudgmentState.None,
-    val statusMessage: String? = null,
-    val activeFilter: String = ForgeWorkshopViewModel.FILTER_RAW
-)
-
-class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val forgeRepository: ForgeRepository = (application as KikkoApplication).forgeRepository
+    private val cardDao: CardDao = (application as KikkoApplication).cardDao
     private val llmHelper: ForgeLlmHelper = (application as KikkoApplication).forgeLlmHelper
-    private val pollenGrainDao: PollenGrainDao = (application as KikkoApplication).pollenGrainDao
-
-    private val TAG = "KikkoForgeTrace"
-    private val _uiState = MutableStateFlow(ForgeWorkshopUiState())
-    val uiState = _uiState.asStateFlow()
     private val gson = Gson()
 
-    private var competitionJob: Job? = null
-    private var judgmentJob: Job? = null
+    private val _uiState = MutableStateFlow(AudienceUiState())
+    val uiState = _uiState.asStateFlow()
 
-    private var allWorkshopItems = listOf<Pair<PollenGrain, KnowledgeCard?>>()
+    private val _toastEvent = MutableSharedFlow<String>()
+    val toastEvent = _toastEvent.asSharedFlow()
 
-    private val deckProperties = mapOf(
-        "Food" to listOf("description", "ingredients", "allergens", "stats.energy"),
-        "Plant" to listOf("description", "biological.scientificName", "biological.vernacularName", "stats.floweringPeriod"),
-        "Insect" to listOf("description", "biological.scientificName", "biological.vernacularName", "stats.diet"),
-        "Bird" to listOf("description", "biological.scientificName", "biological.vernacularName", "stats.wingspan")
-    )
-
-    private data class IdentificationResultData(
-        val reasoning: Reasoning,
-        val deckName: String,
-        val specificName: String,
-        val confidence: Float
-    )
-
-    companion object {
-        const val FILTER_ALL = "ALL"
-        const val FILTER_RAW = "RAW"
-    }
+    private var inferenceJob: Job? = null
+    private var cardContext: KnowledgeCard? = null
 
     init {
-        Log.d(TAG, "ViewModel initialisé. Lancement du chargement initial des grains de pollen.")
+        loadInitialState()
+        val cardId = savedStateHandle.get<Long>(RoyalAudienceActivity.CARD_ID_KEY) ?: -1L
+        if (cardId != -1L) {
+            loadCardContext(cardId)
+        }
+    }
+
+    private fun loadInitialState() {
         viewModelScope.launch {
-            _uiState.update { it.copy(statusMessage = getString(R.string.workshop_loading_grains)) }
-            loadWorkshopGrains()
-        }
-    }
-
-    fun getPropertiesForDeck(deckName: String?): List<String> {
-        val normalizedDeckName = deckName
-            ?.trim()
-            ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            ?.removeSuffix("s")
-        return deckProperties[normalizedDeckName] ?: emptyList()
-    }
-
-
-    fun selectGrain(grain: PollenGrain) {
-        viewModelScope.launch {
-            competitionJob?.cancel()
-            judgmentJob?.cancel()
-            Log.i(TAG, "[SELECT] Sélection du grain ID: ${grain.id} | Statut: ${grain.status} | CardID lié: ${grain.forgedCardId}")
-
-            val card = allWorkshopItems.find { it.first.id == grain.id }?.second
-            val newStatusMessage = if (grain.status == PollenStatus.AWAITING_VALIDATION || grain.status == PollenStatus.IDENTIFYING) {
-                getString(R.string.workshop_awaiting_validation)
-            } else {
-                getString(R.string.workshop_ready_to_refine)
-            }
-
-            _uiState.update { it.copy(
-                selectedGrain = grain,
-                selectedCard = card,
-                analysisResults = emptyMap(),
-                competitionSummaries = emptyMap(),
-                judgmentState = JudgmentState.None,
-                statusMessage = newStatusMessage
-            ) }
-
-            if (card != null) {
-                Log.d(TAG, "[SELECT] Carte chargée depuis la cache - ID: ${card.id}, Nom: '${card.specificName}', Deck: '${card.deckName}'")
-            } else {
-                Log.w(TAG, "[SELECT] Aucune carte n'a pu être chargée pour ce grain.")
-            }
-
-            refreshAnalysisResults(grain.id, "identification")
-            card?.deckName?.takeIf { it != "Unknown" }?.let { deckName ->
-                getPropertiesForDeck(deckName).forEach { propertyName ->
-                    refreshAnalysisResults(grain.id, propertyName)
-                }
-            }
-        }
-    }
-
-    fun setFilter(filterType: String) {
-        viewModelScope.launch {
-            if (_uiState.value.activeFilter == filterType) return@launch
-            _uiState.update { it.copy(activeFilter = filterType) }
-            updateFilteredGrains()
-        }
-    }
-
-    private fun updateFilteredGrains() {
-        val currentFilter = _uiState.value.activeFilter
-        val filteredItems = when (currentFilter) {
-            FILTER_RAW -> allWorkshopItems.filter { (grain, _) ->
-                grain.status in listOf(PollenStatus.RAW, PollenStatus.IDENTIFYING, PollenStatus.AWAITING_VALIDATION, PollenStatus.ERROR)
-            }
-            else -> allWorkshopItems.filter { (_, card) -> card?.deckName == currentFilter }
-        }
-
-        val filteredGrains = filteredItems.map { it.first }
-        _uiState.update { it.copy(workshopGrains = filteredGrains) }
-
-        if (filteredGrains.none { it.id == _uiState.value.selectedGrain?.id }) {
-            filteredGrains.firstOrNull()?.let { selectGrain(it) } ?: _uiState.update {
-                it.copy(selectedGrain = null, selectedCard = null, statusMessage = getString(R.string.workshop_no_grains_in_deck))
-            }
-        }
-    }
-
-    fun createAnalysisTournament(propertyName: String) {
-        viewModelScope.launch {
-            val grain = _uiState.value.selectedGrain ?: return@launch
-            _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_preparing_competition, propertyName)) }
-
-            val modelsToCompete = withContext(Dispatchers.IO) {
+            val models = withContext(Dispatchers.IO) {
                 File(getApplication<Application>().filesDir, "imported_models")
-                    .listFiles { _, name -> name.endsWith(".task") }?.map { it.name } ?: emptyList()
+                    .listFiles { _, name -> name.endsWith(".task") }?.toList() ?: emptyList()
             }
 
-            if (modelsToCompete.isEmpty()) {
-                _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_no_queens_installed)) }
-                return@launch
+            val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
+            val useNano = prefs.getBoolean(ToolsDialogFragment.KEY_USE_GEMINI_NANO, false)
+            val savedModelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null)
+
+            _uiState.update {
+                it.copy(
+                    availableModels = models,
+                    selectedModelName = if (useNano) ForgeWorkshopViewModel.NANO_QUEEN_NAME else savedModelName ?: models.firstOrNull()?.name
+                )
             }
-            Log.i(TAG, "[COMPETITION] Reines en compétition: ${modelsToCompete.joinToString()}")
-
-            val accelerator = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
-
-            val tasks = forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
-            refreshAnalysisResults(grain.id, propertyName)
-
-            val message = getApplication<Application>().resources.getQuantityString(R.plurals.workshop_tasks_ready, tasks.size, tasks.size)
-            _uiState.update { it.copy(isLoading = false, statusMessage = message) }
-
-            launchCompetitionExecution(propertyName)
+            initializeQueen()
         }
     }
 
-    fun relaunchAnalysisTournament(propertyName: String) {
+    private fun loadCardContext(cardId: Long) {
         viewModelScope.launch {
-            val grain = _uiState.value.selectedGrain ?: return@launch
-            _uiState.update { it.copy(isLoading = true, statusMessage = "Clearing old results for '$propertyName'...") }
-            forgeRepository.clearAnalysisResultsForProperty(grain.id, propertyName)
-            refreshAnalysisResults(grain.id, propertyName)
-            createAnalysisTournament(propertyName)
+            cardContext = cardDao.getCardById(cardId)
+            cardContext?.let { card ->
+                val contextMessage = ChatMessage(card = card, isFromUser = false)
+                _uiState.update { it.copy(messages = it.messages + contextMessage) }
+            }
         }
     }
 
-    fun validateFromSummary(summaryItem: CompetitionSummaryItem) {
-        Log.i(TAG, "[VALIDATE-SUMMARY] Validation for response '${summaryItem.response}' with ${summaryItem.voteCount} votes.")
-        validateProperty(summaryItem.firstValidTask)
-    }
+    private fun initializeQueen() {
+        val modelName = _uiState.value.selectedModelName
+        if (modelName == null) {
+            viewModelScope.launch { _toastEvent.emit(getString(R.string.audience_no_queen_available)) }
+            return
+        }
 
-    fun validateAndCreateCardFromIdentification(task: AnalysisResult) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val grain = _uiState.value.selectedGrain ?: return@launch
-            val rawResponse = task.rawResponse ?: return@launch
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            _toastEvent.emit(getString(R.string.queen_waking_up))
 
-            withContext(Dispatchers.Main) { _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_validating_identification)) } }
-
-            try {
-                var resultData = parseIntelligentJson<IdentificationResultData>(rawResponse)
-                if (resultData == null) {
-                    val name = """"specificName"\s*:\s*"(.*?)"""".toRegex().find(rawResponse)?.groups?.get(1)?.value
-                    val deck = """"(deckName|DeckName)"\s*:\s*"(.*?)"""".toRegex(RegexOption.IGNORE_CASE).find(rawResponse)?.groups?.get(2)?.value
-                    if (name != null && deck != null) {
-                        resultData = IdentificationResultData(name, deck, Reasoning("N/A", "Regex Fallback"), 0.5f)
-                    } else {
-                        throw IOException(getString(R.string.error_validation_parsing_failed))
-                    }
-                }
-
-                var cardId = grain.forgedCardId
-                if (cardId == null) {
-                    val newCard = KnowledgeCard(specificName = resultData.specificName, deckName = resultData.deckName, imagePath = grain.pollenImagePaths.firstOrNull(), confidence = resultData.confidence, reasoning = resultData.reasoning, description = null, stats = null, quiz = null, translations = null, scientificName = null, vernacularName = null, allergens = null, ingredients = null)
-                    cardId = cardDao.insert(newCard)
-                    pollenGrainDao.updateForgingResult(grain.id, grain.status, cardId)
+            val error = withContext(Dispatchers.IO) {
+                if (modelName == ForgeWorkshopViewModel.NANO_QUEEN_NAME) {
+                    if (NanoLlmHelper.isNanoAvailable(getApplication())) null else "Nano not available"
                 } else {
-                    cardDao.updateIdentification(cardId, resultData.specificName, resultData.deckName, resultData.reasoning, resultData.confidence)
-                }
-                pollenGrainDao.updateStatus(grain.id, PollenStatus.PENDING_DESCRIPTION)
-                withContext(Dispatchers.Main) { loadWorkshopGrains() }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "[VALIDATE-ID] Critical validation failure.", e)
-                withContext(Dispatchers.Main) { _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_validation_error, e.message)) } }
-            }
-        }
-    }
-
-    fun validateProperty(task: AnalysisResult) {
-        if (task.propertyName == "identification") {
-            validateAndCreateCardFromIdentification(task)
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val grain = _uiState.value.selectedGrain ?: return@launch
-            val cardId = grain.forgedCardId ?: return@launch
-            val rawResponse = task.rawResponse ?: return@launch
-            Log.i(TAG, "[VALIDATE-PROP] Validating property '${task.propertyName}' with task ${task.id}.")
-
-            withContext(Dispatchers.Main) { _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_validating_property, task.propertyName)) } }
-
-            try {
-                val propertyJson = parseIntelligentJson<JsonObject>(rawResponse) ?: throw IOException(getString(R.string.error_json_malformed))
-                val valueElement = propertyJson.get(task.propertyName) ?: throw IOException(getString(R.string.error_json_key_missing, task.propertyName))
-                val valueAsString = if (valueElement.isJsonPrimitive) valueElement.asString else gson.toJson(valueElement)
-
-                forgeRepository.updateCardProperty(cardId, task.propertyName, valueAsString)
-                pollenGrainDao.updateStatus(grain.id, getNextStatus(grain.status))
-                withContext(Dispatchers.Main) { loadWorkshopGrains() }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "[VALIDATE-PROP] Failed to validate property '${task.propertyName}'.", e)
-                withContext(Dispatchers.Main) { _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_validation_error, e.message)) } }
-            }
-        }
-    }
-
-    private fun getNextStatus(currentStatus: PollenStatus): PollenStatus = when (currentStatus) {
-        PollenStatus.PENDING_DESCRIPTION -> PollenStatus.PENDING_STATS
-        PollenStatus.PENDING_STATS -> PollenStatus.PENDING_QUIZ
-        PollenStatus.PENDING_QUIZ -> PollenStatus.PENDING_TRANSLATION
-        PollenStatus.PENDING_TRANSLATION -> PollenStatus.FORGED
-        else -> currentStatus
-    }
-
-    // BOURDON'S REFACTOR V3: L'Orchestrateur Royal "Maître de Cérémonie"
-    private fun launchCompetitionExecution(propertyName: String, singleTaskToRun: AnalysisResult? = null) {
-        competitionJob?.cancel()
-        competitionJob = viewModelScope.launch(Dispatchers.IO) {
-            val tasksToRun = singleTaskToRun?.let { listOf(it) }
-                ?: _uiState.value.analysisResults[propertyName]?.filter { it.status == AnalysisStatus.PENDING } ?: emptyList()
-
-            if (tasksToRun.isEmpty()) {
-                Log.w(TAG, "[ORCHESTRATOR] Launch requested for '$propertyName', but no pending tasks found.")
-                return@launch
-            }
-
-            val tasksByQueen = tasksToRun.groupBy { gson.fromJson(it.modelConfigJson, ModelConfiguration::class.java).modelName }
-            Log.i(TAG, "[ORCHESTRATOR] Launching for ${tasksToRun.size} tasks, grouped by ${tasksByQueen.size} Queen(s).")
-
-            for ((modelName, tasksForQueen) in tasksByQueen) {
-                Log.i(TAG, "[ORCHESTRATOR] Summoning Queen '$modelName' for ${tasksForQueen.size} task(s).")
-                val firstTaskConfig = gson.fromJson(tasksForQueen.first().modelConfigJson, ModelConfiguration::class.java)
-                val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
-                if (!modelFile.exists()) {
-                    Log.e(TAG, "[ORCHESTRATOR] FAILED: AI Queen file '$modelName' not found.")
-                    tasksForQueen.forEach { updateTaskStatusInDb(it.id, it.pollenGrainId, it.propertyName, AnalysisStatus.FAILED, "Model file not found") }
-                    continue
-                }
-
-                val isMultimodal = tasksForQueen.any { it.propertyName == "identification" || it.propertyName == "description" }
-                val queenModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = modelName.contains("gemma-3n", ignoreCase = true))
-                val initError = llmHelper.initialize(queenModel, firstTaskConfig.accelerator, isMultimodal)
-                if (initError != null) {
-                    Log.e(TAG, "[ORCHESTRATOR] Failed to initialize Queen '$modelName': $initError")
-                    tasksForQueen.forEach { updateTaskStatusInDb(it.id, it.pollenGrainId, it.propertyName, AnalysisStatus.FAILED, "Initialization failed: $initError") }
-                    continue
-                }
-
-                try {
-                    for (task in tasksForQueen) {
-                        if (!runSingleTask(task)) {
-                            Log.w(TAG, "[ORCHESTRATOR] Task ${task.id.substring(0,4)} failed. Queen '$modelName' will continue with next task.")
-                        }
+                    val modelFile = _uiState.value.availableModels.firstOrNull { it.name == modelName }
+                    if (modelFile == null || !modelFile.exists()) {
+                        return@withContext getString(R.string.error_queen_model_file_not_found)
                     }
-                } finally {
-                    Log.i(TAG, "[ORCHESTRATOR] Queen '$modelName' has completed her duties. Cleaning up resources.")
-                    llmHelper.cleanUp()
-                }
-            }
-            Log.i(TAG, "[ORCHESTRATOR] All Queens have completed their duties for property '$propertyName'.")
-        }
-    }
-
-    private suspend fun runSingleTask(task: AnalysisResult): Boolean {
-        return try {
-            withContext(Dispatchers.Main) { updateTaskStatusInUi(task.id, task.propertyName) { it.copy(status = AnalysisStatus.RUNNING, streamingResponse = "") } }
-
-            val config = gson.fromJson(task.modelConfigJson, ModelConfiguration::class.java)
-            val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
-            val card = forgeRepository.getCardForGrain(parentGrain)
-            val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
-
-            val isMultimodalTask = task.propertyName == "identification" || task.propertyName == "description"
-            val images = if (isMultimodalTask) parentGrain.pollenImagePaths.mapNotNull { BitmapFactory.decodeFile(it) } else emptyList()
-
-            val prompt = when(task.propertyName) {
-                "identification" -> ForgePromptGenerator.generateIdentificationTournamentPrompt(swarmReportJson)
-                else -> {
-                    val currentCard = card ?: throw IllegalStateException("Card not found for refinement")
-                    ForgePromptGenerator.generatePropertyForgePrompt(
-                        propertyName = task.propertyName, deckName = currentCard.deckName, specificName = currentCard.specificName,
-                        swarmReportJson = swarmReportJson, existingDescription = currentCard.description, dependencyDataJson = null
-                    )
+                    val model = Model(name = modelFile.name, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = modelFile.length(), llmSupportImage = true)
+                    llmHelper.initialize(model, "GPU", isMultimodal = true)
                 }
             }
 
-            llmHelper.resetSession(Model(name=config.modelName, url="", downloadFileName="", sizeInBytes=0), isMultimodalTask, config.temperature, config.topK)
-
-            val fullResponse = suspendCoroutine<String> { continuation ->
-                val responseBuilder = StringBuilder()
-                llmHelper.runInference(prompt, images) { partialResult, done ->
-                    responseBuilder.append(partialResult)
-                    if (done) {
-                        if (continuation.context.isActive) {
-                            continuation.resume(responseBuilder.toString())
-                        }
-                    }
-                }
-            }
-
-            val updatedTask = task.copy(status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null)
-            forgeRepository.updateAnalysisResult(updatedTask)
-            withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
-            true
-        } catch (e: Exception) {
-            val status = if (e is CancellationException) AnalysisStatus.CANCELLED else AnalysisStatus.FAILED
-            updateTaskStatusInDb(task.id, task.pollenGrainId, task.propertyName, status, e.message)
-            false
-        }
-    }
-
-    fun launchFinalJudgment(propertyName: String) {
-        judgmentJob?.cancel()
-        val proposals = _uiState.value.analysisResults[propertyName]?.filter { it.status == AnalysisStatus.COMPLETED }
-        if (proposals.isNullOrEmpty()) {
-            viewModelScope.launch { _uiState.update { it.copy(statusMessage = "Aucune proposition valide à juger.") } }
-            return
-        }
-
-        judgmentJob = viewModelScope.launch(Dispatchers.IO) {
-            val prompt = ForgePromptGenerator.generateJudgmentPrompt(propertyName, proposals)
-            withContext(Dispatchers.Main) {
-                _uiState.update { it.copy(judgmentState = JudgmentState.InProgress(propertyName, prompt)) }
-            }
-
-            try {
-                val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                val modelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null) ?: throw IOException("Aucune Reine sélectionnée pour être l'Arbitre.")
-                val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU")!!
-                val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
-                if (!modelFile.exists()) throw IOException("Fichier de la Reine Arbitre introuvable.")
-                val arbiterModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0)
-                val config = ModelConfiguration(modelName, accelerator, 0.1f, 1)
-
-                val initError = llmHelper.initialize(arbiterModel, accelerator, false)
-                if(initError != null) throw RuntimeException("Échec de l'initialisation de l'Arbitre: $initError")
-
-                val responseBuilder = StringBuilder()
-                llmHelper.runInferenceWithConfig(prompt, emptyList(), config) { partialResult, done ->
-                    responseBuilder.append(partialResult)
-                    viewModelScope.launch(Dispatchers.Main) {
-                        _uiState.update {
-                            val currentState = it.judgmentState
-                            if(currentState is JudgmentState.InProgress) {
-                                it.copy(judgmentState = currentState.copy(streamingResponse = responseBuilder.toString()))
-                            } else it
-                        }
-                    }
-
-                    if (done) {
-                        val arbiterResponse = parseArbiterResponse(responseBuilder.toString(), proposals)
-                        viewModelScope.launch(Dispatchers.Main) {
-                            if (arbiterResponse != null) {
-                                _uiState.update { it.copy(judgmentState = JudgmentState.Complete(propertyName, arbiterResponse.first, arbiterResponse.second)) }
-                            } else {
-                                _uiState.update { it.copy(judgmentState = JudgmentState.Failed(propertyName, "Impossible de parser le verdict de l'Arbitre.")) }
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _uiState.update { it.copy(judgmentState = JudgmentState.Failed(propertyName, e.message ?: "Erreur inconnue de l'Arbitre."))}
-                }
-            }
-        }
-    }
-
-    private data class ArbiterVerdict(val arbiterReasoning: String, val bestProposal: JsonObject)
-
-    private fun parseArbiterResponse(rawResponse: String, originalProposals: List<AnalysisResult>): Pair<String, AnalysisResult>? {
-        val verdict = parseIntelligentJson<ArbiterVerdict>(rawResponse) ?: return null
-
-        val winningProposal = originalProposals.find {
-            it.rawResponse?.let { originalRaw ->
-                try {
-                    val originalJsonObj = parseIntelligentJson<JsonObject>(originalRaw)
-                    originalJsonObj != null && originalJsonObj == verdict.bestProposal
-                } catch (e: Exception) { false }
-            } ?: false
-        }
-
-        return winningProposal?.let { Pair(verdict.arbiterReasoning, it) }
-    }
-
-    fun confirmJudgment() {
-        val currentState = _uiState.value.judgmentState
-        if (currentState is JudgmentState.Complete) {
-            validateProperty(currentState.winningProposal)
-            dismissJudgment()
-        }
-    }
-
-    fun dismissJudgment() {
-        _uiState.update { it.copy(judgmentState = JudgmentState.None) }
-    }
-
-    fun cancelCompetition(propertyName: String) {
-        competitionJob?.cancel()
-        Log.i(TAG, "[AUTO-FORGE] Compétition pour '$propertyName' annulée par l'utilisateur.")
-    }
-
-    fun retryAnalysisTask(task: AnalysisResult) {
-        launchCompetitionExecution(task.propertyName, singleTaskToRun = task)
-    }
-
-    fun deleteSelectedGrain() {
-        val grainToDelete = _uiState.value.selectedGrain ?: return
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                forgeRepository.deletePollenGrainAndAssociatedData(grainToDelete)
-            }
-            loadWorkshopGrains()
-        }
-    }
-
-    private suspend fun updateTaskStatusInDb(taskId: String, grainId: String, propertyName: String, newStatus: AnalysisStatus, errorMessage: String? = null) {
-        val currentTask = forgeRepository.getAnalysisResults(grainId, propertyName).find { it.id == taskId }
-        if (currentTask != null) {
-            val updatedTask = currentTask.copy(status = newStatus, errorMessage = errorMessage)
-            forgeRepository.updateAnalysisResult(updatedTask)
-            withContext(Dispatchers.Main) {
-                refreshAnalysisResults(grainId, propertyName)
-            }
-        }
-    }
-
-    private fun updateTaskStatusInUi(taskId: String, propertyName: String, updateAction: (AnalysisResult) -> AnalysisResult) {
-        _uiState.update { currentState ->
-            val newMap = currentState.analysisResults.toMutableMap()
-            val propertyTasks = newMap[propertyName]?.toMutableList()
-            val taskIndex = propertyTasks?.indexOfFirst { it.id == taskId }
-
-            if (propertyTasks != null && taskIndex != null && taskIndex != -1) {
-                propertyTasks[taskIndex] = updateAction(propertyTasks[taskIndex])
-                newMap[propertyName] = propertyTasks
-                currentState.copy(analysisResults = newMap)
+            if (error == null) {
+                val readyMessage = ChatMessage(text = getString(R.string.queen_ready_to_chat), isFromUser = false)
+                _uiState.update { it.copy(isLoading = false, messages = it.messages + readyMessage) }
             } else {
-                currentState
+                _uiState.update { it.copy(isLoading = false) }
+                _toastEvent.emit(getString(R.string.error_queen_init_failed, error))
             }
         }
     }
 
-    private suspend fun loadWorkshopGrains() {
-        _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_loading_grains)) }
+    fun sendMessage(text: String, imageUri: Uri?) {
+        inferenceJob?.cancel()
+        val userMessage = ChatMessage(text = text, imageUri = imageUri?.toString(), isFromUser = true)
+        val queenPlaceholder = ChatMessage(text = "...", isFromUser = false, isStreaming = true)
+        _uiState.update { it.copy(messages = it.messages + userMessage + queenPlaceholder, isLoading = true) }
 
-        val grains = forgeRepository.getGrainsForWorkshop() + pollenGrainDao.getByStatus(PollenStatus.AWAITING_VALIDATION) + pollenGrainDao.getByStatus(PollenStatus.ERROR)
-        val items = grains.distinctBy { it.id }.sortedByDescending { it.timestamp }.map { grain ->
-            val card = forgeRepository.getCardForGrain(grain)
-            Pair(grain, card)
-        }
-        allWorkshopItems = items
+        val selectedModelName = _uiState.value.selectedModelName ?: return
 
-        _uiState.update { it.copy(isLoading = false) }
-        updateFilteredGrains()
-
-        val grainToSelect = _uiState.value.workshopGrains.firstOrNull()
-        if (grainToSelect != null) {
-            selectGrain(grainToSelect)
+        if (selectedModelName == ForgeWorkshopViewModel.NANO_QUEEN_NAME) {
+            handleNanoStreaming(text)
         } else {
-            _uiState.update { it.copy(selectedGrain = null, selectedCard = null, statusMessage = getString(R.string.workshop_no_grains_to_forge)) }
+            handleMediaPipeStreaming(text, imageUri, selectedModelName)
         }
     }
 
-    private suspend fun refreshAnalysisResults(pollenGrainId: String, propertyName: String) {
-        val results = forgeRepository.getAnalysisResults(pollenGrainId, propertyName)
+    private fun handleNanoStreaming(text: String) {
+        inferenceJob = viewModelScope.launch {
+            val prompt = buildPrompt(text)
+            val fullResponse = StringBuilder()
+            val ttsBuffer = StringBuilder()
 
-        _uiState.update { currentState ->
-            val newAnalysisMap = currentState.analysisResults.toMutableMap().apply { this[propertyName] = results }
-            val newSummariesMap = currentState.competitionSummaries.toMutableMap()
-
-            val hasCompletedTasks = results.any { it.status == AnalysisStatus.COMPLETED }
-            if (hasCompletedTasks) {
-                val summary = createCompetitionSummary(propertyName, results)
-                if (summary.items.isNotEmpty()) {
-                    newSummariesMap[propertyName] = summary
-                } else {
-                    newSummariesMap.remove(propertyName)
-                }
-            } else {
-                newSummariesMap.remove(propertyName)
-            }
-            currentState.copy(analysisResults = newAnalysisMap, competitionSummaries = newSummariesMap)
-        }
-    }
-
-    private fun createCompetitionSummary(propertyName: String, results: List<AnalysisResult>): CompetitionSummary {
-        val completedTasks = results.filter { it.status == AnalysisStatus.COMPLETED && !it.rawResponse.isNullOrBlank() }
-        if (completedTasks.isEmpty()) return CompetitionSummary(propertyName, emptyList())
-
-        val responseGroups = completedTasks.groupBy { task ->
-            extractValueFromResponse(task.rawResponse!!, propertyName)
-        }.filterKeys { it.isNotBlank() }
-
-        val summaryItems = responseGroups.map { (response, tasks) ->
-            CompetitionSummaryItem(response = response, voteCount = tasks.size, firstValidTask = tasks.first())
-        }.sortedByDescending { it.voteCount }
-        return CompetitionSummary(propertyName, summaryItems)
-    }
-
-    private fun extractValueFromResponse(rawResponse: String, propertyName: String): String {
-        try {
-            val propertyJson = parseIntelligentJson<JsonObject>(rawResponse)
-            if (propertyJson != null) {
-                return when (propertyName) {
-                    "identification" -> {
-                        val name = propertyJson.get("specificName")?.asString ?: ""
-                        val deck = propertyJson.get("deckName")?.asString ?: ""
-                        if (name.isNotBlank() && deck.isNotBlank()) "$deck: $name" else ""
+            NanoLlmHelper.generateResponseStream(prompt)
+                .onCompletion {
+                    // S'il reste du texte dans le buffer, on le lit
+                    if (ttsBuffer.isNotEmpty()) {
+                        TtsService.speak(ttsBuffer.toString(), Locale.getDefault())
                     }
-                    else -> {
-                        val valueElement = propertyJson.get(propertyName)
-                        if (valueElement != null) {
-                            if (valueElement.isJsonPrimitive) valueElement.asString else gson.toJson(valueElement)
-                        } else ""
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+                .catch { e ->
+                    _uiState.update {
+                        val updatedMessages = it.messages.dropLast(1) + ChatMessage(text = e.message ?: "Unknown Error", isFromUser = false, isStreaming = false)
+                        it.copy(messages = updatedMessages, isLoading = false)
                     }
                 }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "[PARSER] Le parsing JSON a échoué pour '$propertyName', tentative de fallback. Erreur: ${e.message}")
-        }
+                .collect { chunk ->
+                    fullResponse.append(chunk)
+                    ttsBuffer.append(chunk)
 
-        if (propertyName == "identification") {
-            val name = """"specificName"\s*:\s*"(.*?)"""".toRegex().find(rawResponse)?.groups?.get(1)?.value
-            val deck = """"(deckName|DeckName)"\s*:\s*"(.*?)"""".toRegex(RegexOption.IGNORE_CASE).find(rawResponse)?.groups?.get(2)?.value
-            if (name != null && deck != null) {
-                return "$deck: $name"
-            }
+                    _uiState.update { currentState ->
+                        val updatedMessages = currentState.messages.toMutableList()
+                        if (updatedMessages.isNotEmpty()) {
+                            updatedMessages[updatedMessages.size - 1] = updatedMessages.last().copy(text = fullResponse.toString())
+                        }
+                        currentState.copy(messages = updatedMessages)
+                    }
+
+                    // Logique TTS : chercher les phrases complètes
+                    var separatorIndex: Int
+                    while (ttsBuffer.indexOfFirst { it == '.' || it == '?' || it == '!' || it == ',' || it == '\n' }.also { separatorIndex = it } != -1) {
+                        val sentence = ttsBuffer.substring(0, separatorIndex + 1).trim()
+                        if (sentence.isNotBlank()) {
+                            TtsService.speak(sentence, Locale.getDefault())
+                        }
+                        ttsBuffer.delete(0, separatorIndex + 1)
+                    }
+                }
         }
-        return ""
     }
 
+    private fun handleMediaPipeStreaming(text: String, imageUri: Uri?, selectedModelName: String) {
+        val settings = _uiState.value.audienceSettings
+        inferenceJob = viewModelScope.launch(Dispatchers.IO) {
+            val prompt = buildPrompt(text)
+            val bitmap = imageUri?.let { uriToBitmap(it) }
+            val images = if (bitmap != null) listOf(bitmap) else emptyList()
 
-    private inline fun <reified T> parseIntelligentJson(rawString: String): T? {
-        val firstBrace = rawString.indexOf('{')
-        if (firstBrace == -1) return null
+            val responseBuilder = StringBuilder()
+            val modelFile = _uiState.value.availableModels.firstOrNull { it.name == selectedModelName } ?: return@launch
+            val queenModel = Model(name = modelFile.name, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = modelFile.length(), llmSupportImage = true)
 
-        var braceCount = 0
-        var lastBrace = -1
-        for (i in firstBrace until rawString.length) {
-            when (rawString[i]) {
-                '{' -> braceCount++
-                '}' -> braceCount--
-            }
-            if (braceCount == 0) {
-                lastBrace = i
-                break
+            llmHelper.resetSession(queenModel, images.isNotEmpty(), settings.temperature, settings.topK)
+            llmHelper.runInference(prompt, images) { partialResult, done ->
+                responseBuilder.append(partialResult)
+                _uiState.update { currentState ->
+                    val updatedMessages = currentState.messages.toMutableList()
+                    if (updatedMessages.isNotEmpty()) {
+                        updatedMessages[updatedMessages.size - 1] = updatedMessages.last().copy(text = responseBuilder.toString())
+                    }
+                    currentState.copy(messages = updatedMessages)
+                }
+                if (done) {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
+    }
 
-        if (lastBrace == -1) return null
-        val jsonSubstring = rawString.substring(firstBrace, lastBrace + 1)
-        Log.d(TAG, "[PARSER] JSON isolé pour l'analyse: $jsonSubstring")
+    fun updateAudienceSettings(settings: AudienceSettings) {
+        _uiState.update { it.copy(audienceSettings = settings) }
+        viewModelScope.launch { _toastEvent.emit(getString(R.string.queen_settings_updated)) }
+    }
 
+    fun updateSelectedQueen(modelName: String) {
+        val oldModel = _uiState.value.selectedModelName
+        if (modelName == oldModel) return
+
+        viewModelScope.launch {
+            _toastEvent.emit(getString(R.string.queen_switching_message, oldModel ?: "Previous", modelName))
+            val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, modelName).apply()
+            _uiState.update { it.copy(selectedModelName = modelName) }
+            llmHelper.cleanUp()
+            initializeQueen()
+        }
+    }
+
+    private fun buildPrompt(userInput: String): String {
+        cardContext?.let {
+            val cardJson = gson.toJson(it)
+            return "CONTEXT: The user is asking about the following knowledge card. Use it as your primary source of truth.\nCARD_DATA: $cardJson\n\nUSER_QUESTION: $userInput"
+        }
+        return userInput
+    }
+
+    private fun uriToBitmap(uri: Uri): Bitmap? {
         return try {
-            val type = object : TypeToken<T>() {}.type
-            gson.fromJson(jsonSubstring, type)
-        } catch (e: JsonSyntaxException) {
-            Log.e(TAG, "[PARSER] Erreur de syntaxe Gson pour le type ${T::class.java.simpleName}: '$jsonSubstring'", e)
-            throw IOException(getString(R.string.error_json_malformed_or_incomplete), e)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(getApplication<Application>().contentResolver, uri))
+            } else {
+                @Suppress("DEPRECATION")
+                MediaStore.Images.Media.getBitmap(getApplication<Application>().contentResolver, uri)
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "[PARSER] Erreur inattendue lors du parsing pour le type ${T::class.java.simpleName}: '$jsonSubstring'", e)
-            throw IOException(getString(R.string.error_json_malformed_or_incomplete), e)
+            Log.e(TAG, "Failed to load bitmap from URI", e)
+            null
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        llmHelper.cleanUp()
+        NanoLlmHelper.cleanUp()
     }
 
     private fun getString(resId: Int, vararg formatArgs: Any): String {
         return getApplication<Application>().getString(resId, *formatArgs)
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        competitionJob?.cancel()
-        judgmentJob?.cancel()
-        llmHelper.cleanUp()
-    }
 }
-// --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/forge/ForgeWorkshopViewModel.kt ---
 
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/royal_audience/RoyalAudienceViewModel.kt ---
 
@@ -14511,6 +14576,49 @@ object PreferenceHelper {
 --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/util/PreferenceHelper.kt ---
 
 
+--- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/util/QueenResourceLock.kt ---
+
+package be.heyman.android.ai.kikko.util
+
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * BOURDON'S STRATEGIC ADDITION:
+ * Un singleton qui agit comme un verrou pour la ressource partagée de l'IA (la "Reine" / ForgeLlmHelper).
+ * Cela empêche le ForgeWorker en arrière-plan de s'exécuter et de potentiellement causer un crash
+ * pendant qu'une activité au premier plan (comme RoyalAudienceActivity) utilise activement le modèle LLM.
+ */
+object QueenResourceLock {
+
+    private val isLocked = AtomicBoolean(false)
+
+    /**
+     * Tente d'acquérir le verrou. Appelé par les activités dans `onResume`.
+     * @return `true` si le verrou a été acquis avec succès, `false` sinon.
+     */
+    fun acquire(): Boolean {
+        return isLocked.compareAndSet(false, true)
+    }
+
+    /**
+     * Libère le verrou. Appelé par les activités dans `onPause`.
+     */
+    fun release() {
+        isLocked.set(false)
+    }
+
+    /**
+     * Vérifie si le verrou est actuellement détenu.
+     * Le Worker vérifiera cela avant de commencer son travail.
+     */
+    fun isLocked(): Boolean {
+        return isLocked.get()
+    }
+}
+
+--- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/util/QueenResourceLock.kt ---
+
+
 --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/util/logging/InferenceLog.kt ---
 
 package be.heyman.android.ai.kikko.util.logging
@@ -14733,6 +14841,7 @@ import be.heyman.android.ai.kikko.model.SwarmAnalysisResult
 import be.heyman.android.ai.kikko.model.TranslatedContent
 import be.heyman.android.ai.kikko.persistence.CardDao
 import be.heyman.android.ai.kikko.persistence.PollenGrainDao
+import be.heyman.android.ai.kikko.util.QueenResourceLock
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -14782,6 +14891,12 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
     }
 
     override suspend fun doWork(): Result {
+        // BOURDON'S STRATEGIC FIX: Implémentation du Verrou de Souveraineté.
+        if (QueenResourceLock.isLocked()) {
+            Log.w(TAG, "La Reine est occupée par une Audience (Verrou actif). Le Worker va retenter plus tard.")
+            return Result.retry()
+        }
+
         Log.i(TAG, "WORKER MONOLITHIQUE DÉMARRÉ.")
         setForeground(createForegroundInfo("La Forge s'éveille..."))
 
@@ -14843,7 +14958,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
         try {
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = config.modelName.contains("gemma-3n", ignoreCase = true))
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = config.modelName.contains("gemma-3n", ignoreCase = true))
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = true)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Identification): $initError")
@@ -14874,7 +14989,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour la description.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Description): $initError")
@@ -14893,7 +15008,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour les stats.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Stats): $initError")
@@ -14930,7 +15045,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour le quiz.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Quiz): $initError")
@@ -14950,7 +15065,7 @@ class ForgeWorker(val appContext: Context, params: WorkerParameters) : Coroutine
             val card = cardDao.getCardById(cardId) ?: throw IOException("Carte $cardId introuvable pour la traduction.")
             val modelFile = File(appContext.filesDir, "imported_models").resolve(config.modelName)
             if (!modelFile.exists()) throw IOException("Fichier de la Reine IA '${config.modelName}' introuvable.")
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = "", sizeInBytes = 0, llmSupportImage = false)
+            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = modelFile.name, sizeInBytes = 0, llmSupportImage = false)
 
             val initError = llmHelper.initialize(queenModel, config.accelerator, isMultimodal = false)
             if (initError != null) throw RuntimeException("Échec de l'initialisation (Traduction): $initError")
@@ -15992,8 +16107,7 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="12dp"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    tools:text="@string/bourdon_message_placeholder"/>
+                 android:textColor="@color/black"   tools:text="@string/bourdon_message_placeholder"/>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
@@ -17717,7 +17831,44 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- BOURDON'S ADDITION: Section pour le statut et la sélection de Gemini Nano -->
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="16dp"/>
+
             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Statut Royal (Gemini Nano)"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/tools_nano_status_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:text="Vérification en cours..."
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/tools_switch_use_nano"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Utiliser Gemini Nano comme Reine par défaut"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"/>
+
+
+            <TextView
+                android:id="@+id/tools_active_queen_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tools_active_queen_forge"
@@ -17736,6 +17887,7 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
                 android:layout_marginBottom="8dp"/>
 
             <TextView
+                android:id="@+id/tools_queen_accelerator_title"
                 style="?attr/textAppearanceBodyMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -18232,7 +18384,6 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- BOURDON'S REFORGE: Cet en-tête est maintenant la zone cliquable pour déplier -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/analysis_header_container"
             android:layout_width="match_parent"
@@ -18245,7 +18396,7 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textColor="@color/black"
-                android:textSize="14dp"
+                android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -18264,7 +18415,6 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- BOURDON'S REFORGE: Ce conteneur sera caché/affiché -->
         <LinearLayout
             android:id="@+id/analysis_details_container"
             android:layout_width="match_parent"
@@ -18301,6 +18451,61 @@ class KikkoDownloadWorker(val context: Context, params: WorkerParameters) : Coro
                 android:visibility="gone"
                 tools:visibility="visible"
                 tools:text="{ 'description': 'A dandelion is...', 'stats': {...} }"/>
+
+            <!-- BOURDON'S REFORGE: Ajout de la section des métriques de performance -->
+            <com.google.android.material.divider.MaterialDivider
+                android:id="@+id/metrics_divider_top"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/analysis_metrics_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/analysis_metric_ttft"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableStartCompat="@android:drawable/ic_menu_recent_history"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Reflex: 250ms"/>
+
+                <TextView
+                    android:id="@+id/analysis_metric_total_time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableStartCompat="@android:drawable/ic_menu_my_calendar"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Total: 1.2s"/>
+
+                <TextView
+                    android:id="@+id/analysis_metric_tps"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    app:drawableTint="?attr/colorOnSurfaceVariant"
+                    android:drawablePadding="4dp"
+                    tools:text="Speed: 120 t/s"/>
+            </LinearLayout>
 
             <HorizontalScrollView
                 android:layout_width="match_parent"

@@ -26,7 +26,44 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- BOURDON'S ADDITION: Section pour le statut et la sélection de Gemini Nano -->
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="16dp"/>
+
             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Statut Royal (Gemini Nano)"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/tools_nano_status_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:text="Vérification en cours..."
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/tools_switch_use_nano"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Utiliser Gemini Nano comme Reine par défaut"
+                android:visibility="gone"
+                tools:visibility="visible"/>
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"/>
+
+
+            <TextView
+                android:id="@+id/tools_active_queen_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/tools_active_queen_forge"
@@ -45,6 +82,7 @@
                 android:layout_marginBottom="8dp"/>
 
             <TextView
+                android:id="@+id/tools_queen_accelerator_title"
                 style="?attr/textAppearanceBodyMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

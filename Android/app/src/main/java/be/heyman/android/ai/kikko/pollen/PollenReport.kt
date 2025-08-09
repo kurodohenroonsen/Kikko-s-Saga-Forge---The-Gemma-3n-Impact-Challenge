@@ -1,3 +1,5 @@
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenReport.kt ---
+
 package be.heyman.android.ai.kikko.pollen
 
 import android.graphics.Rect
@@ -61,6 +63,7 @@ data class OcrBlock(
 
 /**
  * Le rapport d'analyse final et complet de la Forge.
+ * BOURDON'S REFORGE: Ajout d'un champ pour la description générée par Nano (via ML Kit).
  */
 data class PollenAnalysis(
     val imageWidth: Int,
@@ -69,5 +72,6 @@ data class PollenAnalysis(
     val analyzedObjects: List<AnalyzedObject>, // Analyse par objet
     // BOURDON'S FIX: Remplacement de la chaîne de caractères simple par une structure hiérarchique.
     val structuredOcrResult: List<OcrBlock>,
-    val barcodeResults: List<BarcodeResult>
+    val barcodeResults: List<BarcodeResult>,
+    val nanoImageDescription: String? = null // NOUVEAU CHAMP
 )

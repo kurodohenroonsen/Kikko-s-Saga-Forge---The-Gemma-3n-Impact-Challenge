@@ -35,16 +35,21 @@ object TtsService : TextToSpeech.OnInitListener {
 
                 override fun onDone(utteranceId: String?) {
                     Log.d(TAG, "TTS a fini de parler: $utteranceId")
-                    _isSpeaking.value = false
                     val completedRequest = directSpeakQueue.poll()
                     completedRequest?.onDone?.invoke()
+
+                    if (directSpeakQueue.isEmpty()) {
+                        _isSpeaking.value = false
+                    }
                     processDirectSpeakQueue()
                 }
 
                 override fun onError(utteranceId: String?) {
                     Log.e(TAG, "Erreur TTS pour: $utteranceId")
-                    _isSpeaking.value = false
                     directSpeakQueue.poll()
+                    if (directSpeakQueue.isEmpty()) {
+                        _isSpeaking.value = false
+                    }
                     processDirectSpeakQueue()
                 }
             })
@@ -64,8 +69,11 @@ object TtsService : TextToSpeech.OnInitListener {
     }
 
     fun speak(text: String, locale: Locale, onDone: (() -> Unit)? = null) {
-        // BOURDON'S CRITICAL FIX: Nettoyage du texte avant de le parler.
         val cleanedText = text.replace("*", "")
+        if (cleanedText.isBlank()) {
+            onDone?.invoke()
+            return
+        }
 
         val utteranceId = "KikkoDirectSpeak-${UUID.randomUUID()}"
         val request = SpeakRequest(utteranceId, cleanedText, locale, onDone)
@@ -82,8 +90,9 @@ object TtsService : TextToSpeech.OnInitListener {
         }
 
         val request = directSpeakQueue.peek() ?: return
+        _isSpeaking.value = true
         tts?.language = request.locale
-        tts?.speak(request.text, TextToSpeech.QUEUE_ADD, null, request.utteranceId)
+        tts?.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
     }
 
     fun stopAndClearQueue() {

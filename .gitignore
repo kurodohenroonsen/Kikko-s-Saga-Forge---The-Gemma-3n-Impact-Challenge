@@ -115,3 +115,6 @@ Android/app/.DS_Store
 .DS_Store
 Android/.kotlin/sessions/kotlin-compiler-3668880130398237448.salive
 .DS_Store
+Android/.gradle/8.10.2/checksums/sha1-checksums.bin
+Android/.gradle/8.10.2/checksums/md5-checksums.bin
+.DS_Store

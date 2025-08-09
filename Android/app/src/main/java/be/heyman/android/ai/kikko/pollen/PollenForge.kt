@@ -1,10 +1,25 @@
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenForge.kt ---
+
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenForge.kt ---
+
 package be.heyman.android.ai.kikko.pollen
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.util.Log
+import androidx.camera.core.ImageProxy
+import com.google.android.gms.tasks.Task
 import com.google.gson.GsonBuilder
 import com.google.mlkit.common.model.LocalModel
+import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.imagedescription.ImageDescription
+import com.google.mlkit.genai.imagedescription.ImageDescriber
+import com.google.mlkit.genai.imagedescription.ImageDescriberOptions
+import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -16,28 +31,31 @@ import com.google.mlkit.vision.label.custom.CustomImageLabelerOptions
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.tasks.await
 import java.io.Closeable
+import java.io.IOException
 
 /**
- * Orchestre une analyse multi-niveaux avec une escouade complète de classifieurs spécialisés,
- * un OCR et un scanner de codes-barres.
- * BOURDON'S REFACTOR: Cette version est maintenant robuste et charge les modèles séquentiellement.
+ * Orchestre une analyse multi-niveaux avec une escouade complète de classifieurs spécialisés.
+ * BOURDON'S REFORGE V8: Ajout de logs détaillés et intégration complète des résultats Nano.
  */
 class PollenForge(private val context: Context) {
 
     private val TAG = "PollenForge"
 
     private val specialistModelPaths = mapOf(
-        "Défaut ML Kit" to "DEFAULT", // Cas spécial pour le modèle par défaut
+        "Défaut ML Kit" to "DEFAULT",
         "Labeler Objet" to "object_labeler.tflite",
         "Plantes" to "aiy-tflite-vision-classifier-plants-v1-v3.tflite",
         "Insectes" to "aiy-tflite-vision-classifier-insects-v1-v3.tflite",
@@ -62,69 +80,121 @@ class PollenForge(private val context: Context) {
         }
     }
 
-    suspend fun processImage(bitmap: Bitmap): Pair<PollenAnalysis, String> = coroutineScope {
-        val highResImage = InputImage.fromBitmap(bitmap, 0)
-        var objectDetector: com.google.mlkit.vision.objects.ObjectDetector? = null
-        var textRecognizer: com.google.mlkit.vision.text.TextRecognizer? = null
-        var barcodeScanner: BarcodeScanner? = null
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
+        if (image.image == null) return null
+        val yuvToRgbConverter = YuvToRgbConverter(context)
+        val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+        yuvToRgbConverter.yuvToRgb(image.image!!, bitmap)
+        return bitmap
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    suspend fun processImage(imageProxy: ImageProxy): Pair<PollenAnalysis, String> = coroutineScope {
         val closableClients = mutableListOf<Closeable>()
+        var imageDescriber: ImageDescriber? = null
+        // Create a single InputImage to be shared safely by all compatible ML Kit Vision APIs
+        val inputImage = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees)
 
         try {
-            // --- Étape 1: Détection d'objets ---
+            Log.d(TAG, "Lancement de l'essaim d'analyse en PARALLÈLE avec isolation des ressources...")
+
             val objectDetectorOptions = ObjectDetectorOptions.Builder()
                 .setDetectorMode(ObjectDetectorOptions.SINGLE_IMAGE_MODE)
                 .enableMultipleObjects().enableClassification().build()
-            objectDetector = ObjectDetection.getClient(objectDetectorOptions)
-            closableClients.add(objectDetector)
-            val detectedObjects = objectDetector.process(highResImage).await()
-            Log.d(TAG, "Phase 1: ${detectedObjects.size} objets détectés.")
-
-            // --- Étape 2: Analyse Globale (Spécialistes Séquentiels + OCR + Barcode) ---
-            val globalSpecialistResults = mutableListOf<Pair<String, List<ImageLabel>>>()
-            for ((name, path) in specialistModelPaths) {
-                Log.d(TAG, "Analyse globale avec le spécialiste: $name")
-                val labeler = createImageLabeler(path)
+            val objectDetector = ObjectDetection.getClient(objectDetectorOptions).also { closableClients.add(it) }
+            val objectTask = async(Dispatchers.IO) {
                 try {
-                    val labels = labeler.process(highResImage).await()
-                    globalSpecialistResults.add(Pair(name, labels))
-                } finally {
-                    labeler.close() // Libère les ressources immédiatement
+                    val result = objectDetector.process(inputImage).await()
+                    Log.i(TAG, "[ML KIT RESULT - Objects] Detected ${result.size} objects.")
+                    result
+                }
+                catch (e: Exception) { Log.e(TAG, "Object Detection failed", e); emptyList<DetectedObject>() }
+            }
+
+            val textRecognizer = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build()).also { closableClients.add(it) }
+            val ocrTask = async(Dispatchers.IO) {
+                try {
+                    val result = textRecognizer.process(inputImage).await()
+                    Log.i(TAG, "[ML KIT RESULT - OCR] Full Text length: ${result.text.length}")
+                    result
+                }
+                catch (e: Exception) { Log.e(TAG, "OCR failed", e); null }
+            }
+
+            val barcodeScanner = BarcodeScanning.getClient().also { closableClients.add(it) }
+            val barcodeTask = async(Dispatchers.IO) {
+                try {
+                    val result = barcodeScanner.process(inputImage).await()
+                    Log.i(TAG, "[ML KIT RESULT - Barcode] Found ${result.size} barcodes.")
+                    result
+                }
+                catch (e: Exception) { Log.e(TAG, "Barcode Scanning failed", e); emptyList<Barcode>() }
+            }
+
+            // The ImageDescription API requires a Bitmap, so we convert it here, isolated from other tasks.
+            imageDescriber = ImageDescription.getClient(ImageDescriberOptions.builder(context).build())
+            val descriptionTask = async(Dispatchers.IO) {
+                var bitmapForNano: Bitmap? = null
+                try {
+                    // Create a local, temporary bitmap only for this task
+                    bitmapForNano = imageProxyToBitmap(imageProxy)
+                    if (bitmapForNano == null) return@async "Description error: Bitmap conversion failed."
+
+                    val status = imageDescriber!!.checkFeatureStatus().await()
+                    if (status == FeatureStatus.AVAILABLE || status == FeatureStatus.DOWNLOADABLE || status == FeatureStatus.DOWNLOADING) {
+                        val request = ImageDescriptionRequest.builder(bitmapForNano).build()
+                        val descriptionResult = imageDescriber!!.runInference(request).await()
+                        Log.i(TAG, "[ML KIT RESULT - Nano Desc] Description generated (length: ${descriptionResult.description.length}).")
+                        descriptionResult.description
+                    } else { "Description non disponible." }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Image Description failed", e)
+                    "Erreur de description."
                 }
             }
 
-            textRecognizer = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
-            closableClients.add(textRecognizer)
-            barcodeScanner = BarcodeScanning.getClient()
-            closableClients.add(barcodeScanner)
+            val specialistTasks = specialistModelPaths.map { (name, path) ->
+                async(Dispatchers.IO) {
+                    val labeler = createImageLabeler(path)
+                    try {
+                        val labels = labeler.process(inputImage).await()
+                        Log.i(TAG, "[ML KIT RESULT - $name] Found ${labels.size} labels. Top: ${labels.firstOrNull()?.text ?: "N/A"}")
+                        Pair(name, labels)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Classifier '$name' failed", e)
+                        Pair(name, emptyList<ImageLabel>())
+                    } finally {
+                        labeler.close()
+                    }
+                }
+            }
 
-            val globalOcrResult = textRecognizer.process(highResImage).await()
-            val barcodeResults = barcodeScanner.process(highResImage).await()
-            Log.d(TAG, "Phase 2: Analyse globale terminée.")
+            val detectedObjects = objectTask.await()
+            val globalOcrResult = ocrTask.await()
+            val barcodeResults = barcodeTask.await()
+            val nanoDescription = descriptionTask.await()
+            val globalSpecialistResults = awaitAll(*specialistTasks.toTypedArray())
+            Log.d(TAG, "Toutes les analyses de l'essaim sont terminées.")
 
-            // --- Étape 3: Analyse par Objet (reportée pour la stabilité) ---
-            // Pour l'instant, on se concentre sur la stabilisation de l'analyse globale.
-            Log.d(TAG, "Phase 3: Analyse par objet désactivée pour cette version.")
-            val analyzedObjectsResults = emptyList<AnalyzedObject>()
-
-            // --- Étape 4: Construction des rapports ---
             val pollenAnalysisReport = PollenAnalysis(
-                imageWidth = bitmap.width,
-                imageHeight = bitmap.height,
+                imageWidth = imageProxy.width, imageHeight = imageProxy.height,
                 globalAnalysis = globalSpecialistResults.map { SpecialistReport(it.first, it.second.toClassifierResults()) }.filter { it.results.isNotEmpty() },
-                analyzedObjects = analyzedObjectsResults,
-                structuredOcrResult = globalOcrResult.toStructuredResult(),
-                barcodeResults = barcodeResults.map { BarcodeResult(it.displayValue, it.format.toString()) }
+                analyzedObjects = emptyList(),
+                structuredOcrResult = globalOcrResult?.toStructuredResult() ?: emptyList(),
+                barcodeResults = barcodeResults.map { BarcodeResult(it.displayValue, it.format.toString()) },
+                nanoImageDescription = nanoDescription
             )
 
-            val jsonReport = generateJsonReport(bitmap, barcodeResults, globalOcrResult, detectedObjects, globalSpecialistResults)
+            val jsonReport = generateJsonReport(imageProxy, barcodeResults, globalOcrResult, detectedObjects, globalSpecialistResults, nanoDescription)
 
             return@coroutineScope Pair(pollenAnalysisReport, jsonReport)
 
         } finally {
-            // Assure que tous les clients principaux sont fermés
             closableClients.forEach {
                 try { it.close() } catch (e: Exception) { Log.e(TAG, "Erreur lors de la fermeture d'un client ML Kit.", e) }
             }
+            imageDescriber?.close()
         }
     }
 
@@ -154,18 +224,20 @@ class PollenForge(private val context: Context) {
     }
 
     private fun generateJsonReport(
-        bitmap: Bitmap,
+        imageProxy: ImageProxy,
         barcodes: List<Barcode>,
-        ocrResult: Text,
+        ocrResult: Text?,
         detectedObjects: List<DetectedObject>,
-        specialistResults: List<Pair<String, List<ImageLabel>>>
+        specialistResults: List<Pair<String, List<ImageLabel>>>,
+        nanoDescription: String?
     ): String {
         val gson = GsonBuilder().setPrettyPrinting().create()
         val reportMap = mutableMapOf<String, Any>()
 
-        reportMap["image_dimensions"] = mapOf("width" to bitmap.width, "height" to bitmap.height)
-        reportMap["barcode_scanner_results"] = barcodes.map { mapOf("format" to it.format, "raw_value" to it.rawValue) }
-        reportMap["ocr_results"] = mapOf("full_text" to ocrResult.text)
+        reportMap["image_dimensions"] = mapOf("width" to imageProxy.width, "height" to imageProxy.height)
+        reportMap["barcode_scanner_results"] = barcodes.map { mapOf("format" to it.format.toString(), "raw_value" to it.rawValue) }
+        reportMap["ocr_results"] = mapOf("full_text" to (ocrResult?.text ?: ""))
+        reportMap["nano_image_description"] = nanoDescription ?: ""
         reportMap["object_detection_results"] = detectedObjects.map { obj ->
             mapOf(
                 "labels" to obj.labels.map { label -> mapOf("text" to label.text, "confidence" to label.confidence) }
@@ -178,3 +250,5 @@ class PollenForge(private val context: Context) {
         return gson.toJson(reportMap)
     }
 }
+
+// --- END OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/PollenForge.kt ---

@@ -1,5 +1,7 @@
 // --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/ForgeLiveActivity.kt ---
 
+// --- START OF FILE app/src/main/java/be/heyman/android/ai/kikko/pollen/ForgeLiveActivity.kt ---
+
 package be.heyman.android.ai.kikko.pollen
 
 import android.Manifest
@@ -77,7 +79,6 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
-    private lateinit var yuvToRgbConverter: YuvToRgbConverter
     private lateinit var pollenForge: PollenForge
 
     // BOURDON'S REFACTOR: Le launcher de permission micro est maintenant obsolète.
@@ -96,7 +97,6 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
         setContentView(R.layout.activity_forge_live)
         Log.d(TAG, "[CYCLE DE VIE] onCreate")
 
-        yuvToRgbConverter = YuvToRgbConverter(this)
         cameraExecutor = Executors.newSingleThreadExecutor()
         pollenForge = PollenForge(this)
 
@@ -229,19 +229,10 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
             object : ImageCapture.OnImageCapturedCallback() {
                 @SuppressLint("UnsafeOptInUsageError")
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    Log.d(TAG, "Capture réussie. Rotation: ${image.imageInfo.rotationDegrees} degrés.")
-                    val rotationDegrees = image.imageInfo.rotationDegrees
-                    val bitmap = imageProxyToBitmap(image)
-                    image.close()
-
-                    if (bitmap != null) {
-                        val rotatedBitmap = rotateBitmap(bitmap, rotationDegrees.toFloat())
-                        viewModel.startPollenAnalysis(rotatedBitmap, pollenForge)
-                    } else {
-                        Log.e(TAG, "Échec de la conversion de ImageProxy en Bitmap.")
-                        Toast.makeText(this@ForgeLiveActivity, R.string.pollen_capture_error_toast, Toast.LENGTH_SHORT).show()
-                        captureButton.isEnabled = true
-                    }
+                    Log.d(TAG, "Capture réussie. Passage de l'ImageProxy au ViewModel.")
+                    // BOURDON'S CRITICAL FIX: Pass the ImageProxy directly to the ViewModel.
+                    // The ViewModel is now responsible for closing it.
+                    viewModel.startPollenAnalysis(image, pollenForge)
                 }
                 override fun onError(exception: ImageCaptureException) {
                     Log.e(TAG, "Échec de la capture d'image : ", exception)
@@ -290,31 +281,6 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
         }
     }
 
-    private fun rotateBitmap(source: Bitmap, angle: Float): Bitmap {
-        if (angle == 0f) return source
-        val matrix = Matrix()
-        matrix.postRotate(angle)
-        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
-    }
-
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
-        return when (image.format) {
-            ImageFormat.YUV_420_888 -> {
-                val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-                yuvToRgbConverter.yuvToRgb(image.image!!, bitmap)
-                bitmap
-            }
-            ImageFormat.JPEG -> {
-                val buffer = image.planes[0].buffer
-                val bytes = ByteArray(buffer.remaining())
-                buffer.get(bytes)
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            }
-            else -> null
-        }
-    }
-
     override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
         lensFacing = if (isChecked) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         Log.d(TAG, "Changement de caméra vers: ${if (isChecked) "AVANT" else "ARRIÈRE"}")
@@ -343,7 +309,10 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
             report.globalAnalysis.forEach { specialistReport ->
                 sb.append(getString(R.string.specialist_report_specialist_opinion, specialistReport.specialistName)).append("\n")
                 specialistReport.results.take(3).forEach { result ->
-                    sb.append(getString(R.string.specialist_report_item, result.label, result.confidence * 100)).append("\n")
+                    // BOURDON'S FIX: Manual string construction to avoid format exceptions
+                    val confidencePercent = result.confidence * 100
+                    val formattedConfidence = "%.1f".format(Locale.US, confidencePercent)
+                    sb.append("  - ${result.label} ($formattedConfidence%%)\n")
                 }
             }
         }
@@ -353,9 +322,15 @@ class ForgeLiveActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeLis
         } else {
             report.analyzedObjects.forEachIndexed { index, analyzedObject ->
                 val mainLabel = analyzedObject.detectedObject.labels.firstOrNull()
-                sb.append(getString(R.string.specialist_report_object_item, index + 1, mainLabel?.text ?: getString(R.string.specialist_report_unknown_object), (mainLabel?.confidence ?: 0f) * 100)).append("\n")
+                // BOURDON'S FIX: Manual string construction
+                val objectLabel = mainLabel?.text ?: getString(R.string.specialist_report_unknown_object)
+                val objectConfidence = (mainLabel?.confidence ?: 0f) * 100
+                val formattedObjectConfidence = "%.1f".format(Locale.US, objectConfidence)
+                sb.append("${index + 1}. $objectLabel ($formattedObjectConfidence%%)\n")
+
                 analyzedObject.specialistReports.forEach { specialistReport ->
-                    sb.append(getString(R.string.specialist_report_object_specialist_item, specialistReport.specialistName, specialistReport.results.firstOrNull()?.label ?: "N/A")).append("\n")
+                    val specialistLabel = specialistReport.results.firstOrNull()?.label ?: "N/A"
+                    sb.append("  - ${specialistReport.specialistName}: $specialistLabel\n")
                 }
             }
         }

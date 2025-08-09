@@ -6,10 +6,21 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
 <p align="center">
   <h2>
     <a href="https://www.kikko.be/apk/kikko_saga_forge.apk">
-      ⬇️ Download the Android APK ⬇️
+      ⬇️ Download the Gemma 3n Edition APK ⬇️
     </a>
   </h2>
-  <strong>( https://www.kikko.be/model/kikko.apk )</strong>
+  <strong>( https://www.kikko.be/apk/kikko_saga_forge.apk )</strong>
+</p>
+
+<p align="center">
+  <h2>
+    <a href="https://www.kikko.be/apk/kikko_saga_forge_nano.apk">
+      🔬 Download the Gemini Nano Comparison APK 🔬
+    </a>
+  </h2>
+  <strong>( https://www.kikko.be/apk/kikko_saga_forge_nano.apk )</strong>
+  <br>
+  <em>This special version includes both Gemma 3n and Gemini Nano, allowing for a direct on-device comparison.</em>
 </p>
 
 # Kikko's Saga Forge: A Verifiable & Evolvable Knowledge RPG
@@ -21,13 +32,13 @@ Bourdon character, acting as a playful referee. In the background, a beautiful, 
 
 ## 📘 User Guide & Overview
 - 🧭 **Start here**: read the full guide → **[User Guide](./doc/user_guide.md)**.
-- 🧪 **Technical architecture (Gemma 3n on Android)**: read the deep‑dive → **[Technical Documentation](./doc/tech_arch_gemma3n_android.md)**.
+- 🧪 **Technical architecture (Gemma 3n & Gemini Nano on Android)**: read the deep‑dive → **[Technical Documentation](./doc/tech_arch_gemma3n_android.md)**.
 
 ---
 
 ### **1. The Vision: An Answer to the AI Trust Crisis**
 
-This document serves as the technical verification for our submission to the Google Gemma 3n Impact Challenge. It details the architecture of Kikko's Saga Forge, a novel **"Verifiable & Evolvable Knowledge Game"** designed as a 100% on-device, privacy-first Android application. We explain our specific and multifaceted use of the Gemma 3n model, highlight the significant engineering challenges we overcame—particularly in ensuring AI robustness and system resilience—and justify the technical choices that make our vision a functional reality. This document proves that our video demonstration is backed by deliberate, concrete engineering.
+This document serves as the technical verification for our submission to the Google Gemma 3n Impact Challenge. It details the architecture of Kikko's Saga Forge, a novel **"Verifiable & Evolvable Knowledge Game"** designed as a 100% on-device, privacy-first Android application. We explain our specific and multifaceted use of on-device models, highlight the significant engineering challenges we overcame—particularly in ensuring AI robustness and system resilience—and justify the technical choices that make our vision a functional reality. This document proves that our video demonstration is backed by deliberate, concrete engineering.
 
 *   [**Document 10: Synopsis for the Google Competition**](./doc/doc10.md)
 
@@ -51,9 +62,14 @@ Our core architectural philosophy is a **decentralized guild of specialized AI a
 
 ---
 
-### **3. The Queen's Role: Our Specific Use of Gemma 3n**
+### **3. The Queen's Role: A Throne for Gemma 3n and Gemini Nano**
 
-Gemma 3n is not just a feature in our app; it is the **central nervous system** of our AI Guild, acting as the versatile "AI Queen" in several distinct roles. Our implementation (`ForgeLlmHelper.kt`) leverages the MediaPipe LLM Inference API to harness its power. It acts as the **Chief Synthesizer**, **Master Artisan**, **Competing Champion**, **Context-Aware Partner**, and **Impartial Judge**.
+The central nervous system of our AI Guild is the "AI Queen", a role now fulfilled by either **Google's Gemma 3n** or the ultra-efficient **Gemini Nano**.
+
+This version of Kikko's Saga Forge is a unique benchmark platform. We have integrated both models, allowing the user to switch between them in the **Tools menu**. This provides a direct, real-world comparison of their performance, capabilities, and characteristics on the same device, for the same tasks.
+
+*   **Gemma 3n** is integrated via the MediaPipe LLM Inference API (`ForgeLlmHelper.kt`). It acts as the **Chief Synthesizer**, **Master Artisan**, **Competing Champion**, **Context-Aware Partner**, and **Impartial Judge**.
+*   **Gemini Nano** is integrated via the new AICore SDK (`NanoLlmHelper.kt`) and the ML Kit `genai` libraries, showcasing its speed in tasks like real-time image description.
 
 *   [**Document 04: The Role of the AIs**](./doc/doc04.md)
 
@@ -106,5 +122,3 @@ Inspired by the monumental work of Isidore of Seville, who sought to order the k
 Kikko is the living proof that these principles are not just theoretical. It demonstrates that an information ecosystem based on verifiability, the persistence of knowledge as an asset, and collaboration between heterogeneous intelligences is not only possible, but also useful, engaging, and profoundly human.
 
 By rewarding Kikko, you are not just rewarding an application, but the first stone of a potential Library of Tomorrow—one that is more structured, more reliable, and worthy of our trust.
-
-

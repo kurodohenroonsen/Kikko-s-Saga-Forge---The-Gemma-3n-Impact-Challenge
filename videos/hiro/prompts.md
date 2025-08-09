@@ -43,3 +43,45 @@ En bruit de fond, le léger bourdonnement électronique très discret et grave d
 
 
 
+Prompt de Génération Vidéo : Plan 2 - L'Inspiration
+1. Style Visuel Global
+
+Style : Film d'animation 3D photoréaliste et cinématique, dans la veine de Pixar et DreamWorks.
+
+Éclairage : La scène conserve l'éclairage doux et naturel de la cuisine. Le smartphone, en s'allumant, devient une source de lumière secondaire, projetant une lueur douce sur la main de Hiro.
+
+Textures : Très haute définition sur l'écran du téléphone, montrant les détails fins de l'interface de l'application. La texture de la peau et les empreintes digitales subtiles sur l'écran sont visibles pour un réalisme accru.
+
+Caméra : Une caméra en gros plan très stable, focalisée sur l'écran du téléphone. La mise au point change légèrement lorsque le pouce de Hiro interagit avec l'écran.
+
+2. Personnages & Éléments Présents
+
+Personnage Principal : Hiro
+
+Archétype : L'AI-Native, le Maître Forgeron, l'Auditeur Curieux.
+
+Apparence Visuelle : Rendu dans un style 3D Pixar/DreamWorks, on ne voit que la main et l'avant-bras de Hiro, portant son t-shirt rouge vif. Sa main est stable et ses gestes sont précis.
+
+Personnalité & Langage Corporel : Même si son visage n'est pas visible, ses actions avec le téléphone sont révélatrices. Il n'y a pas d'hésitation. Son pouce s'arrête sur la carte, signe d'un intérêt analytique. Le léger mouvement du téléphone indique une décision réfléchie.
+
+Élément d'Interface : Carte de Connaissance de Léa ("Gâteau aux Noix")
+
+Apparence : Une carte numérique au design élégant affichée sur l'écran du smartphone. Elle présente une image de haute qualité d'un gâteau aux noix, l'icône du deck "Food" 🍔, le nom du créateur "Léa", et un "Sceau de Confiance" bien visible.
+
+3. Description du Plan
+
+Type de Plan : Gros plan (Close-up) sur le smartphone de Hiro, posé sur le plan de travail à côté du gâteau.
+
+Action : La main de Hiro entre dans le champ et saisit délicatement le téléphone. L'écran s'active, affichant une notification discrète avec l'icône de l'application Kikko. Le pouce de Hiro tape sur la notification. L'application s'ouvre directement sur la carte de connaissance de Léa : "Gâteau aux Noix". Le pouce de Hiro reste immobile pendant un instant, planant au-dessus de l'image. Il incline très légèrement le téléphone, comme pour examiner un détail. Après quelques secondes d'observation, son pouce balaie l'écran pour fermer la carte.
+
+Expression & Émotion : L'action doit transmettre une pensée. L'hésitation du pouce sur la carte montre l'analyse. Le léger hochement de tête (suggéré par le mouvement du téléphone) est le moment "eurêka". Son geste final pour fermer la carte n'est pas un désintérêt, mais une décision prise : il a une nouvelle mission.
+
+4. Conception Sonore (Sans musique ni voix)
+
+Effets Sonores :
+
+Un carillon de notification doux, agréable et non intrusif.
+
+Le son subtil et feutré du pouce qui tape puis glisse sur la surface en verre de l'écran.
+
+Le bourdonnement calme de la cuisine continue en bruit de fond, très bas, pour maintenir la continuité avec le plan précédent.

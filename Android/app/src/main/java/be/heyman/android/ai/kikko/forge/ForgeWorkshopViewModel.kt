@@ -127,6 +127,8 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     companion object {
         const val FILTER_ALL = "ALL"
         const val FILTER_RAW = "RAW"
+        // BOURDON'S NANO INTEGRATION: Nom constant pour la Reine Nano.
+        const val NANO_QUEEN_NAME = "Gemini Nano"
     }
 
     init {
@@ -229,31 +231,39 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, statusMessage = getString(R.string.workshop_preparing_competition, propertyName)) }
 
-            val modelsToCompete = withContext(Dispatchers.IO) {
-                val modelsDir = File(getApplication<Application>().filesDir, "imported_models")
-                if (modelsDir.exists() && modelsDir.isDirectory) {
-                    modelsDir.listFiles { _, name -> name.endsWith(".task") }?.map { it.name } ?: emptyList()
-                } else {
-                    emptyList()
+            val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
+            val useNano = prefs.getBoolean(ToolsDialogFragment.KEY_USE_GEMINI_NANO, false)
+
+            val tasks = if (useNano) {
+                Log.i(TAG, "[COMPETITION] La Reine Gemini Nano est sélectionnée. Création d'une tâche unique.")
+                val nanoConfig = ModelConfiguration(NANO_QUEEN_NAME, "N/A", 0.7f, 40)
+                val task = AnalysisResult(
+                    pollenGrainId = grain.id,
+                    propertyName = propertyName,
+                    modelConfigJson = gson.toJson(nanoConfig),
+                    status = AnalysisStatus.PENDING
+                )
+                forgeRepository.insertAnalysisResult(task)
+                listOf(task)
+            } else {
+                val modelsToCompete = withContext(Dispatchers.IO) {
+                    File(getApplication<Application>().filesDir, "imported_models")
+                        .listFiles { _, name -> name.endsWith(".task") }?.map { it.name } ?: emptyList()
                 }
+
+                if (modelsToCompete.isEmpty()) {
+                    _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_no_queens_installed)) }
+                    return@launch
+                }
+                Log.i(TAG, "[COMPETITION] Reines en compétition: ${modelsToCompete.joinToString()}")
+                val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
+                forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
             }
 
-            if (modelsToCompete.isEmpty()) {
-                _uiState.update { it.copy(isLoading = false, statusMessage = getString(R.string.workshop_no_queens_installed)) }
-                return@launch
-            }
-            Log.i(TAG, "[COMPETITION] Reines en compétition: ${modelsToCompete.joinToString()}")
-
-            val accelerator = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU") ?: "GPU"
-
-            val tasks = forgeRepository.createAnalysisTasksForProperty(grain.id, propertyName, modelsToCompete, accelerator)
             Log.i(TAG, "[COMPETITION] Création de ${tasks.size} tâches pour la propriété '$propertyName'.")
-
             refreshAnalysisResults(grain.id, propertyName)
             val message = getApplication<Application>().resources.getQuantityString(R.plurals.workshop_tasks_ready, tasks.size, tasks.size)
             _uiState.update { it.copy(isLoading = false, statusMessage = message) }
-
             launchCompetitionExecution(propertyName)
         }
     }
@@ -407,6 +417,8 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
 
             for ((modelName, tasksForQueen) in tasksByQueen) {
                 if (!isActive) break
+                if (modelName == NANO_QUEEN_NAME) continue // La logique Nano est gérée séparément.
+
                 Log.i(TAG, "[ORCHESTRATOR] Convocation de la Reine '$modelName' pour ${tasksForQueen.size} tâche(s).")
                 val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
                 if (!modelFile.exists()) {
@@ -439,6 +451,15 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
                     llmHelper.cleanUp()
                 }
             }
+
+            // BOURDON'S NANO INTEGRATION: Gérer la tâche Nano s'il y en a une.
+            tasksByQueen[NANO_QUEEN_NAME]?.firstOrNull()?.let { nanoTask ->
+                if (isActive) {
+                    Log.i(TAG, "[ORCHESTRATOR] Convocation de la Reine Gemini Nano pour la tâche ${nanoTask.id}.")
+                    runSingleTask(nanoTask)
+                }
+            }
+
             Log.i(TAG, "[ORCHESTRATOR] Toutes les Reines ont terminé leur service pour la propriété '$propertyName'.")
         }
     }
@@ -446,44 +467,14 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
     private suspend fun runSingleTask(task: AnalysisResult): Boolean {
         return try {
             withContext(Dispatchers.Main) { updateTaskStatusInUi(task.id, task.propertyName) { it.copy(status = AnalysisStatus.RUNNING, streamingResponse = "") } }
-
             val config = gson.fromJson(task.modelConfigJson, ModelConfiguration::class.java)
-            val isMultimodalTask = task.propertyName == "identification" || task.propertyName == "description"
-            val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
-            val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
-            val images = if (isMultimodalTask) parentGrain.pollenImagePaths.mapNotNull { BitmapFactory.decodeFile(it) } else emptyList<Bitmap>()
 
-            val prompt = when(task.propertyName) {
-                "identification" -> ForgePromptGenerator.generateIdentificationTournamentPrompt(swarmReportJson)
-                else -> {
-                    val card = forgeRepository.getCardForGrain(parentGrain) ?: throw IllegalStateException("Card not found for refinement")
-                    ForgePromptGenerator.generatePropertyForgePrompt(
-                        propertyName = task.propertyName, deckName = card.deckName, specificName = card.specificName,
-                        swarmReportJson = swarmReportJson, existingDescription = card.description, dependencyDataJson = null
-                    )
-                }
+            // BOURDON'S NANO INTEGRATION: Aiguillage de la logique d'inférence.
+            if (config.modelName == NANO_QUEEN_NAME) {
+                runNanoInference(task)
+            } else {
+                runMediaPipeInference(task, config)
             }
-            val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(config.modelName)
-            val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = config.modelName, sizeInBytes = modelFile.length())
-            llmHelper.resetSession(queenModel, isMultimodalTask, config.temperature, config.topK)
-
-            val (fullResponse, metrics) = executeStreamingInferenceAndCaptureMetrics(
-                prompt = prompt,
-                images = images
-            ) { streamingText ->
-                updateTaskStatusInUi(task.id, task.propertyName) { it.copy(streamingResponse = streamingText) }
-            }
-
-            val updatedTask = task.copy(
-                status = AnalysisStatus.COMPLETED,
-                rawResponse = fullResponse,
-                streamingResponse = null,
-                ttftMs = metrics.ttftMs,
-                totalTimeMs = metrics.totalTimeMs,
-                tokensPerSecond = metrics.tokensPerSecond
-            )
-            forgeRepository.updateAnalysisResult(updatedTask)
-            withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
             true
         } catch (e: Exception) {
             if (e is CancellationException) {
@@ -497,6 +488,69 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    private suspend fun runMediaPipeInference(task: AnalysisResult, config: ModelConfiguration) {
+        val isMultimodalTask = task.propertyName == "identification" || task.propertyName == "description"
+        val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
+        val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
+        val images = if (isMultimodalTask) parentGrain.pollenImagePaths.mapNotNull { BitmapFactory.decodeFile(it) } else emptyList<Bitmap>()
+
+        val prompt = getPromptForTask(task, parentGrain, swarmReportJson)
+        val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(config.modelName)
+        val queenModel = Model(name = config.modelName, url = modelFile.absolutePath, downloadFileName = config.modelName, sizeInBytes = modelFile.length())
+        llmHelper.resetSession(queenModel, isMultimodalTask, config.temperature, config.topK)
+
+        val (fullResponse, metrics) = executeStreamingInferenceAndCaptureMetrics(
+            prompt = prompt,
+            images = images
+        ) { streamingText ->
+            updateTaskStatusInUi(task.id, task.propertyName) { it.copy(streamingResponse = streamingText) }
+        }
+
+        val updatedTask = task.copy(
+            status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null,
+            ttftMs = metrics.ttftMs, totalTimeMs = metrics.totalTimeMs, tokensPerSecond = metrics.tokensPerSecond
+        )
+        forgeRepository.updateAnalysisResult(updatedTask)
+        withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
+    }
+
+    private suspend fun runNanoInference(task: AnalysisResult) {
+        if (!NanoLlmHelper.isNanoAvailable(getApplication())) {
+            throw IOException("Gemini Nano is not available.")
+        }
+
+        val parentGrain = _uiState.value.selectedGrain ?: throw IllegalStateException("Parent pollen grain not found")
+        val swarmReportJson = parentGrain.swarmAnalysisReportJson ?: throw IOException("Swarm report missing")
+        val prompt = getPromptForTask(task, parentGrain, swarmReportJson)
+
+        val startTime = System.currentTimeMillis()
+        val fullResponse = NanoLlmHelper.generateResponse(prompt)
+        val endTime = System.currentTimeMillis()
+
+        if (fullResponse.startsWith("Erreur")) throw IOException(fullResponse)
+
+        val updatedTask = task.copy(
+            status = AnalysisStatus.COMPLETED, rawResponse = fullResponse, streamingResponse = null,
+            totalTimeMs = endTime - startTime
+        )
+        forgeRepository.updateAnalysisResult(updatedTask)
+        withContext(Dispatchers.Main) { refreshAnalysisResults(task.pollenGrainId, task.propertyName) }
+    }
+
+    private suspend fun getPromptForTask(task: AnalysisResult, parentGrain: PollenGrain, swarmReportJson: String): String {
+        return when (task.propertyName) {
+            "identification" -> ForgePromptGenerator.generateIdentificationTournamentPrompt(swarmReportJson)
+            else -> {
+                val card = forgeRepository.getCardForGrain(parentGrain) ?: throw IllegalStateException("Card not found for refinement")
+                ForgePromptGenerator.generatePropertyForgePrompt(
+                    propertyName = task.propertyName, deckName = card.deckName, specificName = card.specificName,
+                    swarmReportJson = swarmReportJson, existingDescription = card.description, dependencyDataJson = null
+                )
+            }
+        }
+    }
+
+
     fun launchFinalJudgment(propertyName: String) {
         judgmentJob?.cancel()
         val proposals = _uiState.value.analysisResults[propertyName]?.filter { it.status == AnalysisStatus.COMPLETED }
@@ -505,38 +559,46 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
             return
         }
 
+        val maxResponseLength = 2048
+        val safeProposals = proposals.map {
+            val localRawResponse = it.rawResponse
+            if (localRawResponse != null && localRawResponse.length > maxResponseLength) {
+                Log.w(TAG, "[SAFETY VALVE] Troncation de la réponse anormalement longue de la tâche ${it.id} à $maxResponseLength caractères.")
+                it.copy(rawResponse = localRawResponse.substring(0, maxResponseLength) + " ...TRUNCATED...\"}")
+            } else {
+                it
+            }
+        }
+
         judgmentJob = viewModelScope.launch(Dispatchers.IO) {
-            val prompt = ForgePromptGenerator.generateJudgmentPrompt(propertyName, proposals)
+            val prompt = ForgePromptGenerator.generateJudgmentPrompt(propertyName, safeProposals)
             withContext(Dispatchers.Main) {
                 _uiState.update { it.copy(judgmentState = JudgmentState.InProgress(propertyName, prompt)) }
             }
 
             try {
                 val prefs = getApplication<Application>().getSharedPreferences(ToolsDialogFragment.PREFS_NAME, Context.MODE_PRIVATE)
-                val modelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null) ?: throw IOException("Aucune Reine sélectionnée pour être l'Arbitre.")
-                val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU")!!
-                val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
-                if (!modelFile.exists()) throw IOException("Fichier de la Reine Arbitre introuvable.")
-                val arbiterModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = modelName, sizeInBytes = modelFile.length())
-                val config = ModelConfiguration(modelName, accelerator, 0.1f, 1)
+                val useNano = prefs.getBoolean(ToolsDialogFragment.KEY_USE_GEMINI_NANO, false)
+                val fullResponse: String
 
-                val initError = llmHelper.initialize(arbiterModel, accelerator, false)
-                if(initError != null) throw RuntimeException("Échec de l'initialisation de l'Arbitre: $initError")
-                llmHelper.resetSession(arbiterModel, false, config.temperature, config.topK)
+                if (useNano) {
+                    if (!NanoLlmHelper.isNanoAvailable(getApplication())) throw IOException("Gemini Nano is not available.")
+                    fullResponse = NanoLlmHelper.generateResponse(prompt)
+                } else {
+                    val modelName = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN, null) ?: throw IOException("Aucune Reine sélectionnée pour être l'Arbitre.")
+                    val accelerator = prefs.getString(ToolsDialogFragment.KEY_SELECTED_FORGE_QUEEN_ACCELERATOR, "GPU")!!
+                    val modelFile = File(getApplication<Application>().filesDir, "imported_models").resolve(modelName)
+                    if (!modelFile.exists()) throw IOException("Fichier de la Reine Arbitre introuvable.")
+                    val arbiterModel = Model(name = modelName, url = modelFile.absolutePath, downloadFileName = modelName, sizeInBytes = modelFile.length())
+                    val config = ModelConfiguration(modelName, accelerator, 0.1f, 1)
 
-                val (fullResponse, _) = executeStreamingInferenceAndCaptureMetrics(
-                    prompt = prompt,
-                    images = emptyList<Bitmap>()
-                ) { streamingText ->
-                    _uiState.update {
-                        val currentState = it.judgmentState
-                        if(currentState is JudgmentState.InProgress) {
-                            it.copy(judgmentState = currentState.copy(streamingResponse = streamingText))
-                        } else it
-                    }
+                    val initError = llmHelper.initialize(arbiterModel, accelerator, false)
+                    if(initError != null) throw RuntimeException("Échec de l'initialisation de l'Arbitre: $initError")
+
+                    fullResponse = llmHelper.inferenceWithCoroutineAndConfig(prompt, emptyList(), config)
                 }
 
-                val arbiterVerdict = parseIntelligentJson<ArbiterVerdict>(fullResponse) ?: throw IOException("Impossible de parser le verdict de l'Arbitre.")
+                val arbiterVerdict = parseIntelligentJson<ArbiterVerdict>(fullResponse) ?: throw IOException("Impossible de parser le verdict de l'Arbitre: $fullResponse")
                 withContext(Dispatchers.Main) {
                     _uiState.update { it.copy(judgmentState = JudgmentState.Complete(propertyName, arbiterVerdict)) }
                 }
@@ -673,7 +735,13 @@ class ForgeWorkshopViewModel(application: Application) : AndroidViewModel(applic
         if (completedTasks.isEmpty()) return CompetitionSummary(propertyName, emptyList())
 
         val responseGroups = completedTasks.groupBy { task ->
-            extractValueFromResponse(task.rawResponse!!, propertyName)
+            // BOURDON'S FIX: Copie la propriété mutable dans une variable locale immuable avant de l'utiliser.
+            val localRawResponse = task.rawResponse
+            if (localRawResponse.isNullOrBlank()) {
+                ""
+            } else {
+                extractValueFromResponse(localRawResponse, propertyName)
+            }
         }.filterKeys { it.isNotBlank() }
 
         val summaryItems = responseGroups.map { (response, tasks) ->

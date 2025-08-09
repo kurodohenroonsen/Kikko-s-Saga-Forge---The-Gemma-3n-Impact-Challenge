@@ -35,7 +35,8 @@ android {
 
   defaultConfig {
     applicationId = "be.heyman.android.ai.kikko"
-    minSdk = 26
+    // BOURDON'S FIX: Augmentation du minSdk requise pour Gemini Nano.
+    minSdk = 31
     targetSdk = 35
     versionCode = 1
     versionName = "1.0.4"
@@ -87,6 +88,10 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material3)
 
+  // BOURDON'S ADDITION: Dépendances pour le pont entre Coroutines et les API asynchrones de Google
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.8.0")
+
   implementation(libs.androidx.compose.navigation)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.material.icon.extended)
@@ -96,6 +101,8 @@ dependencies {
   implementation(libs.androidx.lifecycle.process)
   implementation(libs.mediapipe.tasks.text)
   implementation(libs.mediapipe.tasks.genai)
+  // BOURDON'S ADDITION: Dépendance pour Gemini Nano (AICore)
+  implementation("com.google.ai.edge.aicore:aicore:0.0.1-exp01")
   implementation(libs.mediapipe.tasks.imagegen)
   implementation(libs.commonmark)
   implementation(libs.richtext)
@@ -142,6 +149,9 @@ dependencies {
   implementation("com.google.mlkit:object-detection-custom:17.0.2")
   implementation("com.google.mlkit:image-labeling:17.0.9")
   implementation("com.google.mlkit:image-labeling-custom:17.0.3")
+  // BOURDON'S ADDITION: Dépendance pour l'API de description d'image GenAI de ML Kit
+  implementation("com.google.mlkit:genai-image-description:1.0.0-beta1")
+
 
   // BOURDON'S ADDITION: Dépendances requises pour Google Nearby et Location
   implementation("com.google.android.gms:play-services-nearby:19.3.0")

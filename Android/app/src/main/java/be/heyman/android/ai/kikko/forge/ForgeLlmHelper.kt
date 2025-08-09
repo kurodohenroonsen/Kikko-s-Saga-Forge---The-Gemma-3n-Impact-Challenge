@@ -32,6 +32,7 @@ class ForgeLlmHelper(
             Log.d(TAG, "Initialisation LLM avec modèle: ${model.name}, accélérateur: $accelerator, multimodal: $isMultimodal")
             val optionsBuilder = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(model.url)
+                // BOURDON'S FIX: Rétablissement de la valeur maximale supportée par le modèle.
                 .setMaxTokens(4096)
                 .setPreferredBackend(
                     if (accelerator == Accelerator.GPU.label) LlmInference.Backend.GPU

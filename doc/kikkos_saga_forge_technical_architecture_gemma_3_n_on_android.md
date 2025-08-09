@@ -1,187 +1,153 @@
-# Kikko’s Saga Forge — Technical Architecture (Gemma 3n on Android)
+# Kikko’s Saga Forge — Technical Architecture (Gemma 3n & Gemini Nano on Android)
 
-> **Version:** 1.0 · **Last updated:** 2025‑08‑08  
-> **Scope:** How Kikko uses **Google AI Edge** to run **Gemma 3n** on‑device, plus the other Android components that make the “Knowledge Forging” use case compelling, efficient, and privacy‑preserving.
+> **Version:** 1.1 · **Last updated:** 2024-08-08
+> **Scope:** How Kikko uses Google's on-device AI suite (MediaPipe for Gemma 3n, AICore/ML Kit for Gemini Nano) to power its "Knowledge Forging" gameplay, ensuring efficiency and privacy.
 
 ---
 
 ## 1) Executive summary
-**Kikko’s Saga Forge** turns **live camera input** into **verifiable knowledge cards**, fully **offline**. We use **Gemma 3n** (Google AI Edge) for on‑device text+vision reasoning, wrapped by a reproducible **prompt→JSON** contract, and orchestrated through **WorkManager** with a **Room** queue. This unlocks: sub‑second local reasoning (device‑dependent), zero cloud cost, and strict data locality.
+**Kikko’s Saga Forge** turns **live camera input** into **verifiable knowledge cards**, fully **offline**. We use **Gemma 3n** (via MediaPipe) for complex multimodal reasoning and **Gemini Nano** (via AICore/ML Kit) for specialized, fast tasks. Both are orchestrated through **WorkManager** with a local database queue. This hybrid approach delivers sub-second local reasoning, zero cloud cost, and strict data locality.
 
-**Why Gemma 3n?** It’s a **multimodal** small language model designed for **edge devices** (phones, tablets, laptops). It runs via the **AI Edge LLM Inference API** using **LiteRT (.task)** bundles; Android supports **multimodal prompting** (text + one image per session) and standard decoding controls, with optional **RAG** and **function calling** SDKs for on‑device tool use. *See references inline.*
+**On-Device Models:** This application serves as a benchmark, allowing users to switch between **Gemma 3n** `.task` models and the system-provided **Gemini Nano** to compare their performance and characteristics in real-world scenarios.
 
 ---
 
 ## 2) Most compelling use case (story + spec)
-**“Field‑to‑Knowledge, offline.”** A child points the camera at a product label or a plant. Kikko captures **raw pollen** (OCR text, barcode, objects), then **forges** a **card**:
-1. **Identify** the subject from detections and context (vision+text).  
-2. **Describe** concisely (kid‑friendly) and extract **structured facts** (JSON).  
-3. Generate **quiz** questions and **translations**.  
-4. Store card + provenance; optionally **duel** with another device in **Clash**.
+**“Field‑to‑Knowledge, offline.”** A user points their camera at a product label or a plant. Kikko captures **raw pollen** (OCR text, barcode, objects), then **forges** a **card**:
+1. **Describe (Nano):** Instantly generate a spoken description of the image.
+2. **Identify (Gemma 3n):** Synthesize all sensor data to determine the subject (vision+text).
+3. **Describe & Structure (Gemma 3n):** Write a detailed description and extract facts into a strict JSON schema.
+4. **Enrich (Gemma 3n):** Generate quiz questions and translations.
+5. **Store & Share:** Save the card with its full "Thread of Provenance" for verification.
 
 **Why this is compelling on Google AI Edge:**
-- **Latency & privacy:** zero network; instant feedback in the classroom or in the wild.  
-- **Multimodal:** combine OCR’d text and the camera frame inside the same LLM session.  
-- **Cost:** no server bills; works in low‑connectivity contexts.  
-- **Extensible:** add **on‑device RAG** for curricula or safety sheets; add **function calling** for tools (e.g., unit converters).
+- **Latency & Privacy:** Zero network dependency ensures instant feedback and total data privacy.
+- **Hybrid Power:** Use the right model for the job—Nano for speed, Gemma 3n for power.
+- **Cost-Free Scalability:** No server bills, regardless of user numbers.
+- **Extensible:** The architecture supports on-device RAG for custom knowledge bases and function calling for local tool integration.
 
 ---
 
-## 3) High‑level architecture
-```
+## 3) High-level architecture
 CameraX → ML Kit (OCR, Barcode, Object) → Pollen (RAW)
-               │                            │
-               └─> Provenance (JSON) ───────┤
-Room (HiveJob queue) ── WorkManager (foreground when needed)
-               │
-               ├─> LLM Stage A: IDENTIFY (Gemma 3n, text+image)
-               ├─> LLM Stage B: DESCRIPTION (Gemma 3n → Markdown)
-               ├─> LLM Stage C: FACTS (Gemma 3n → JSON schema)
-               ├─> LLM Stage D: QUIZ (Gemma 3n → JSON MCQ)
-               └─> LLM Stage E: TRANSLATE (Gemma 3n → target locales)
-
-Cards (Room) ← Images (MediaStore) ← Provenance (files) ← Audit logs
-P2P Clash (Nearby/Bluetooth) · Voice (Vosk STT + Android TTS)
-```
-
+│ │
+└─> Provenance (JSON) ───────┤
+Room (Database queue) ── WorkManager (Orchestrator)
+│
+├─> LLM Stage 1: LIVE DESCRIBE (Gemini Nano via ML Kit)
+├─> LLM Stage 2: IDENTIFY (Gemma 3n, text+image)
+├─> LLM Stage 3: DESCRIPTION (Gemma 3n → text)
+├─> LLM Stage 4: FACTS (Gemma 3n → JSON schema)
+├─> LLM Stage 5: QUIZ (Gemma 3n → JSON MCQ)
+└─> LLM Stage 6: TRANSLATE (Gemma 3n → target locales)
+KnowledgeCards (Database) ← Images (Files) ← Provenance (Files)
+P2P Clash (Nearby API) · Voice (Vosk STT + Android TTS)
+code
+Code
 ---
 
-## 4) Gemma 3n on Android via Google AI Edge
+## 4) Gemma 3n on Android via MediaPipe
 ### 4.1 Model delivery & format
-- Use **LiteRT `.task`** bundles (tokenizer + compiled graph). During dev, we **ADB‑push** to `/data/local/tmp/llm/…`. In production, we **download post‑install** (APK size limits) and cache in app‑private storage.  
-- **Gemma‑3n** models are available on Hugging Face (LiteRT community). Vision prompting supports **one image per session**.  
-
-> Refs: AI Edge LLM Inference (Android) guide; **model download, `.task`**, init & generation; **multimodal prompting** incl. **max 1 image** and **MPImage** conversion. Also points to **Gemma‑3n E2B/E4B** model cards. citeturn3view0
+- We use **LiteRT `.task`** bundles, which contain the model graph and tokenizer.
+- In Kikko, these models are downloaded by the user from a repository or sideloaded, then stored in the app's private directory, making the app fully offline-capable.
 
 ### 4.2 Dependency & initialization (Kotlin)
 ```kotlin
-// build.gradle
-implementation("com.google.mediapipe:tasks-genai:0.10.24")
+// build.gradle.kts
+implementation(libs.mediapipe.tasks.genai)
 
-// Load model & basic config
-val options = LlmInferenceOptions.builder()
-    .setModelPath(modelPath) // /data/local/tmp/llm/gemma-3n-e2b.task
-    .setMaxTokens(512)
+// In ForgeLlmHelper.kt
+val options = LlmInference.LlmInferenceOptions.builder()
+    .setModelPath(modelPath) // e.g., /data/user/0/.../gemma-3n-e2b.task
+    .setMaxTokens(4096)
+    .build()
+val llmInference = LlmInference.createFromOptions(context, options)
+4.3 Multimodal (text + image)
+Gemma 3n's vision capabilities are crucial for the "Identification" stage.
+code
+Kotlin
+// In ForgeLlmHelper.kt
+val sessionOptions = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+    .setTemperature(0.2f)
     .setTopK(40)
-    .setTemperature(0.7f)
+    .setGraphOptions(
+        GraphOptions.builder().setEnableVisionModality(true).build()
+    )
     .build()
-val llm = LlmInference.createFromOptions(context, options)
+val session = LlmInferenceSession.createFromOptions(llmInference, sessionOptions)
 
-// Single‑turn generation
-val out = llm.generateResponse(prompt)
+session.addQueryChunk("Identify this subject based on the report.")
+session.addImage(BitmapImageBuilder(bitmap).build())
+session.generateResponseAsync { partialResult, done -> /* ... */ }
+5) Gemini Nano on Android via AICore & ML Kit
+5.1 Model delivery & API
+Unlike Gemma 3n's manual .task management, Gemini Nano is delivered and updated via Google Play Services through the AICore SDK.
+We access it using the high-level ML Kit GenAI Image Description API, which abstracts away model availability checks, downloads, and inference calls.
+5.2 Dependency & initialization (Kotlin)
+code
+Kotlin
+// build.gradle.kts
+implementation("com.google.mlkit:genai-image-description:1.0.0-beta1")
 
-// Streaming
-val streamOpts = LlmInferenceOptions.builder()
-    .setResultListener { partial, done -> /* update UI */ }
-    .build()
-llm.generateResponseAsync(streamOpts)
-```
-> Refs: Quickstart dependency, init, `generateResponse(…)` & async streaming. citeturn3view0
-
-### 4.3 Multimodal (text + image)
-```kotlin
-val visionSession = LlmInferenceSession.createFromOptions(
-  llm,
-  LlmInferenceSession.LlmInferenceSessionOptions.builder()
-    .setTopK(10)
-    .setTemperature(0.4f)
-    .setGraphOptions(GraphOptions.builder().setEnableVisionModality(true).build())
-    .build()
+// In ForgeLiveViewModel.kt or a helper
+val imageDescriber = ImageDescription.getClient(
+    ImageDescriberOptions.builder(context).build()
 )
-visionSession.addQueryChunk("Extract key facts from this label.")
-visionSession.addImage(BitmapImageBuilder(bitmap).build())
-val result = visionSession.generateResponse()
-```
-> Notes: enable **vision modality**, pass **MPImage**, **text first, then image**, and set **MaxNumImages(1)** for Gemma 3n. citeturn3view0
+5.3 Usage (Image Description with Streaming)
+This is used for the instant description feature in the Live Forge. The API provides a natural streaming interface via a callback.
+code
+Kotlin
+// In ForgeLiveViewModel.kt
+val request = ImageDescriptionRequest.builder(bitmap).build()
+val fullResponse = StringBuilder()
 
-### 4.4 CPU/GPU selection & quantization
-- AI Edge samples allow **CPU or GPU** selection for Gemma 3 (e.g., 1B) and show **INT4** quantized variants for throughput/size. We expose a **backend toggle** in a dev menu; production defaults are device‑profiled.  
-> Refs: “Gemma 3 on mobile and web with Google AI Edge” (CPU/GPU toggle, INT4 example). citeturn1search8
+// runInference provides a streaming callback
+imageDescriber.runInference(request) { chunk ->
+    fullResponse.append(chunk)
+    // Update UI with partial result
+}.await() // Coroutine wrapper for the Task
 
-### 4.5 On‑device RAG & function calling (optional)
-- For long documents (nutrition regs, plant guides), we can add **AI Edge RAG SDK**: chunk → embed → local vector index → retrieve → **augment prompt** → generate.  
-- The **AI Edge APIs** repo also exposes a **Function Calling SDK** to drive tools (e.g., unit conversion) with **on‑device LLMs**.
-
-> Refs: AI Edge RAG guide (Android), repo overview (RAG & Function Calling). citeturn2search0turn2search2turn2search3
-
----
-
-## 5) Prompt & output contracts (LLM stages)
-We enforce **strict JSON schemas** to keep the game deterministic and kid‑safe. All prompts begin with a **system preface** (tone, brevity, age‑appropriateness) and a **schema block**.
-
-**A) IDENTIFY** (multimodal)
-- **Input:** OCR text (cleaned), object labels, barcode payload, + image.  
-- **Output (JSON):** `{ name, category, confidence, evidence[] }`.
-
-**B) DESCRIPTION**  
-- **Output (Markdown):** ≤80 words, simple vocabulary, cite evidence tokens (`[OCR:x]`).
-
-**C) FACTS**  
-- **Output (JSON):** `{ nutrition?:{…}, origin?:{…}, safety?:{…}, tags:[…] }`.
-
-**D) QUIZ**  
-- **Output (JSON):** `{ q: string, choices:[…], correctIndex:int, rationale:string }`.
-
-**E) TRANSLATE**  
-- **Output:** same Markdown in target locales.
-
-> Multimodal session guidance and sequencing aligns with AI Edge LLM Inference multimodal notes. citeturn3view0
-
----
-
-## 6) Android building blocks used
-- **CameraX** (preview + capture), **ML Kit** (Text Recognition, Barcode, Object) to form **pollen**.  
-- **Room** (entities: `HiveJob`, `Card`, `Provenance`); **Flow** to live‑update UI.  
-- **WorkManager** with **foreground** `dataSync` for long LLM runs; exponential backoff & retry.  
-- **Nearby/Bluetooth** for **Clash** discovery & pairing; **Vosk** for offline STT; **Android TTS** for voice replies.
-
----
-
-## 7) Performance & resource profile (guidance)
-- Prefer **INT4** models for decode speed and footprint; keep **maxTokens** conservative (≤512) per stage.  
-- Stream UI from `generateResponseAsync()` to reduce perceived latency.  
-- Avoid bundling models in the APK; **download on first run**.  
-- Device matrix: verify Pixel 8/8a, S23+, and a 4GB mid‑tier device; measure **TTFT** and **tok/s** per stage.
-
-> Refs: Model push vs bundle guidance; performance toggles; quantized variants. citeturn3view0turn1search8
-
----
-
-## 8) Privacy, safety & offline stance
-- **No cloud calls** in the forging path; all data remains on device.  
-- **Provenance:** persist OCR, detections, and prompts used to generate each card.  
-- **Safety:** constrain outputs via schemas; block unsafe categories at the **prompt gateway**; (optionally) run local safety classifiers as a pre‑filter.
-
----
-
-## 9) Packaging, updates & CI/CD
-- Model **licensing/acceptance**: require user consent before downloading Gemma weights (link to HF terms).  
-- **Version pinning:** store model **bundle ID** + **hash**; allow **rollback**.  
-- CI: run unit tests for **prompt contracts** (JSON schema validation) and integration tests for **LLM stages** with **golden outputs**.
-
----
-
-## 10) Risks & mitigations
-- **Device heterogeneity** → provide a **model selector** (E2B ↔ E4B; CPU/GPU).  
-- **Cold‑start cost** → pre‑warm in a **foreground worker**.  
-- **Long prompts** → truncate OCR, dedupe labels, use RAG only when needed.  
-- **Hallucinations** → strict schemas, cite evidence tokens, UI flags for low confidence.
-
----
-
-## Appendix A — Links & references
-- **Gemma 3n overview / docs (AI for Devs / DeepMind):** model purpose, multimodality. citeturn0search2turn0search4  
-- **Gemma 3n introduction (dev blog):** AI Edge integration, preview status. citeturn0search3  
-- **LLM Inference (Android):** dependency, init, generate, **multimodal**, MPImage, **1 image/session (3n)**. citeturn3view0  
-- **Gemma 3 on mobile with AI Edge:** CPU/GPU selection, quantized (INT4) example, perf methodology. citeturn1search8  
-- **AI Edge RAG SDK (Android) & APIs repo:** on‑device RAG, Function Calling SDK. citeturn2search0turn2search2turn2search3  
-
----
-
-## Appendix B — Minimal Android init checklist
-1. Add `implementation "com.google.mediapipe:tasks-genai:0.10.24"`.  
-2. Download a **Gemma‑3n** `.task` (E2B/E4B) to app storage.  
-3. Create `LlmInference` with **path, top‑k, temperature, maxTokens**.  
-4. For multimodal, enable **vision modality**, set **MaxNumImages(1)** and pass **MPImage**.  
-5. Use **streaming** for responsiveness; validate **JSON** on receipt; persist **provenance**.
-
+// Use fullResponse.toString() when done and trigger TTS
+imageDescriber.close()
+5.4 Feature Availability
+Before running inference, it's mandatory to call imageDescriber.checkFeatureStatus().await(). The ML Kit API handles the download prompt if the model isn't ready on the device, ensuring a smooth user experience.
+6) Prompt & output contracts (LLM stages)
+We enforce strict JSON schemas to keep the game deterministic. All prompts begin with a system preface (defining the AI's role and constraints) and a clear output format specification.
+- Stage 2 (IDENTIFY):
+Input: JSON of ML Kit analysis + image.
+Output (JSON): { "specificName": "...", "deckName": "...", "confidence": 0.95, "reasoning": {...} }.
+- Stage 4 (FACTS):
+Input: Text description, OCR data.
+Output (JSON): { "stats": {"Energy": "520", ...}, "allergens": ["Milk"], ... }.
+- Stage 5 (QUIZ):
+Input: Text description, stats JSON.
+Output (JSON Array): [{"q": "...", "o": ["...", "..."], "c": 0, "explanation": "..."}].
+7) Android building blocks used
+CameraX & ML Kit: Provide the initial raw data ("pollen").
+Room Database: Manages the queue of forging tasks (PollenGrain table) and the final collection (KnowledgeCard table).
+WorkManager: Acts as the offline orchestrator, running each forging stage sequentially as a foreground service to ensure reliability.
+Nearby Connections API: Powers the P2P card duels in the Clash Arena.
+Vosk & Android TTS: Provide offline speech-to-text and text-to-speech capabilities.
+8) Performance & resource profile (guidance)
+Model Selection: The app allows users to switch between Gemma 3n and Gemini Nano, demonstrating the trade-offs between the power of a larger .task model and the efficiency of the system-integrated Nano.
+Streaming: UI is updated via streaming callbacks (setResultListener for MediaPipe, runInference callback for ML Kit) to reduce perceived latency.
+Memory: Bitmaps are carefully managed, with copies created for parallel processing tasks to avoid recycled bitmap crashes, a critical lesson learned during development.
+9) Privacy, safety & offline stance
+100% On-Device: No cloud calls are made in the core forging and gameplay loops. All user data, images, and generated knowledge remain on the device.
+Provenance: The app saves the full inputs (ML Kit JSON) and outputs (LLM raw response) for each stage, creating a "Thread of Provenance" that allows for verification and debugging.
+Safety: Outputs are constrained via strict JSON schemas in prompts.
+10) Packaging, updates & CI/CD
+Model Licensing: The app directs users to a web repository to download models, where they can review licenses before installation.
+Versioning: Models are managed in named folders, allowing for multiple versions to coexist.
+CI/CD: The development loop heavily relies on validating prompt contracts and ensuring the robustness of the sequential, state-based processing pipeline managed by WorkManager.
+Appendix A — Minimal Android init checklist
+For Gemma 3n:
+Add com.google.mediapipe:tasks-genai dependency.
+Download a .task file to app storage.
+Create LlmInference with the model path and configuration.
+For multimodal, enable visionModality and set MaxNumImages(1).
+For Gemini Nano:
+Add com.google.mlkit:genai-image-description dependency.
+Get the ImageDescription client.
+Check feature status with checkFeatureStatus().
+Run inference on a Bitmap via runInference().
